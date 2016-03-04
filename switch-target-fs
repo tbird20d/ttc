@@ -1,0 +1,73 @@
+#!/usr/bin/python
+#
+# switch-target-fs - program to switch the target filesystem depending on the
+# user
+#   ARGS: $1 is the name of the user
+#
+# Usage: switch_target_fs <target> <user>
+
+# this creates a symlink using the 'tlist' table below.
+# the table has: target: (link, link_target)
+# example:
+#     switch_target_fs osk tbird
+# would make a symlink for the osk board using the link_target specified:
+#     ln -s $(link_target)$(user) $(link)
+# a more concrete example:
+#     ln -s arm.ce-5.0.0.0a.tbird /target/osk
+
+import os, sys
+
+# updated navi
+#		7.0.0.0 is OK
+#		8.2.1.1 is TESTING (DI13)
+#
+# updated navi
+#		5.0.0.0.a is OK
+#		6.0.0.3 is OK
+#		7.0.0.0 panics at end of boot
+#		8.0.1.2 panics at end of boot
+#
+# updated panda
+#		8.0.1.2 is OK
+#		8.2.1.1 is OK (DI13)
+# -Frank
+
+tlist = {"tx49":("/a/target/tx49","mips.ce-3.0-RC2."),
+	"osk":("/a/target/osk","arm.ce-5.0.0.0a-osk."),
+	"osk2":("/a/target/osk2","osk2.phase9."),
+	"ebony":("/a/target/ebony","ppc.ce-3.0-RC2."),
+	"nut":("/a/target/nut","i386.ce-3.0-RC2."),
+	"mpcore":("/a/target/mpcore","arm.ce-5.0.0.0a."),
+	"navi":("/a/target/navi","arm.CE-Linux-6.0.0.3."),
+	"beagle":("/a/target/beagle","arm.CE-Linux-6.0.0.3."),
+	"kzm_a9-97":("/a/target/kzm_a9-97","arm.CE-Linux-7.0.0.0."),
+	"kzm_a9-98":("/a/target/kzm_a9-98","arm.CE-Linux-8.2.1.1."),
+	"panda":("/a/target/panda","arm.CE-Linux-8.2.1.1."),
+}
+
+if len(sys.argv)<3 or sys.argv[1]=="-h":
+	print "Usage: switch-target-fs <target> <user>"
+	sys.exit(0)
+
+target = sys.argv[1]
+user = sys.argv[2]
+print "Trying to switch target '%s' filesystem for user '%s'" % (target, user)
+
+if target not in tlist.keys():
+	print "Error: Unknown target '%s'" % target
+	sys.exit(1)
+
+link = tlist[target][0]
+path_prefix = tlist[target][1]
+
+new_path = path_prefix + user
+#if not os.path.exists(new_path):
+#	print "Error: Can't create target filesystem link to '%s'" % new_path
+#	sys.exit(2)
+
+try:
+	os.unlink(link)
+except:
+	print "Error: Can't unlink previous target filesystem link '%s'" % link
+os.symlink(new_path, link)
+print "Link created."

@@ -1,0 +1,182 @@
+#!/usr/bin/python
+#
+# telnet_exec - run a command on another machine via telnet
+#
+# Copyright 2005, 2011 Sony Corporation
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of version 2 of the GNU General Public License as
+#   published by the Free Software Foundation.  The GNU General Public
+#   License is available online at: http://www.gnu.org/copyleft/gpl.html
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+# Author: Tim Bird  <tim.bird (at) am.sony.com>
+
+import getpass
+import sys
+import telnetlib
+import socket
+import time
+import re
+import time
+
+VERSION=(1,2)
+
+# These are defaults
+# Normally, get host, user, password and command from command line
+host = "osk2"
+user = "root"
+password = ""
+cmd = "dmesg"
+
+def usage():
+	print """Usage: telnet_exec <options>
+
+Options:
+-t <host>	Specify the host to telnet to
+-u <user>	Specify the user name to login with
+-p <password>	Specify the password to use to login
+-c <command>	Specify the command to execute on the remote machine
+-v              Be verbose
+-V              Show program version and exit
+-h              Show program usage and exit
+"""
+	sys.exit(0)
+
+def vprint(msg):
+	if verbose:
+		print msg
+
+def dprint(msg):
+	if debug:
+		print msg
+
+def rprint(result):
+	dprint("result='%s'" % result)
+
+verbose = 0
+debug = 0
+for arg in sys.argv:
+	if arg=="-h":
+		usage()
+	if arg=="-V":
+		print "telnet_exec version %d.%d" % VERSION
+		sys.exit(0)
+	if arg=="-t":
+		host = sys.argv[sys.argv.index(arg)+1]
+	if arg=="-u":
+		user = sys.argv[sys.argv.index(arg)+1]
+	if arg=="-p":
+		password = sys.argv[sys.argv.index(arg)+1]
+	if arg=="-v":
+		verbose = 1
+	if arg=="-c":
+		cmd = sys.argv[sys.argv.index(arg)+1]
+	if arg=="--debug":
+		debug = 1
+
+if not cmd:
+	print "No command specified."
+	usage()
+
+vprint('Executing "%s" as user %s on host %s' % (cmd, user, host))
+try:
+	tn = telnetlib.Telnet(host)
+except socket.error, detail:
+	rcode, message = detail
+	print "socket.error: %s" % detail
+	sys.exit(rcode)
+
+if debug:
+	tn.set_debuglevel(1000)
+
+vprint("Waiting for login prompt")
+out1 = result = tn.read_until("login: ")
+rprint(result)
+
+time.sleep(.5)
+
+vprint("Writing user name: %s" % user)
+result = tn.write(user + "\n")
+rprint(result)
+
+if password:
+	vprint("Waiting for password prompt")
+	tn.read_until("Password: ")
+	time.sleep(.5)
+	vprint("Writing password")
+	tn.write(password + "\n")
+
+if debug:
+	t1 = time.time()
+	t2 = time.time()
+	while t2-t1 < 3:
+		vprint("reading stuff")
+		result = tn.read_very_eager()
+		rprint(result)
+		time.sleep(1)
+		t2 = time.time()
+
+#vprint("Waiting for shell prompt")
+#result = tn.read_until("#", 20)
+#rprint(result)
+
+#time.sleep(.5)
+
+#vprint("reading stuff")
+#result = tn.read_eager()
+#rprint(result)
+
+vprint("Writing command: %s" % cmd)
+result = tn.write(cmd+"\n")
+rprint(result)
+
+vprint("Exiting telnet session")
+result = tn.write("exit\n\n")
+rprint(result)
+
+#tn.interact()
+
+# remove some stuff from the returned output, before printing it
+# FIXTHIS - these (read_until and read_all) get stuff already read above!!
+#output = tn.read_until("&$&$&unlikely-string&$&$&", 60)
+output = tn.read_all()
+
+vprint("output before stripping=<<%s>>" % output)
+# OLD STRIPPING METHOD:
+# remove first five, and last three lines, which come from telnet operations
+#output = '\n'.join(output.split('\n')[5:])
+#output = '\n'.join(output.split('\n')[:-3])
+#
+
+# NEW STRIPPING METHOD:
+# do a smarter strip of leading and trailing lines
+# look for command line and exit
+lines = output.split('\n')
+program = cmd.split()[0]
+lead_lines_index=5
+for i in range(len(lines)):
+	if re.match(".*#\s*%s" % program, lines[i]):
+		vprint("command line index=%d" % i)
+		lead_lines_index=i
+		break
+
+# look for line with shell prompt '# exit'
+tail_lines_index=-3
+for i in range(len(lines)):
+	if re.match(".*#\s*exit", lines[i]):
+		vprint("exit line index=%d" % i)
+		tail_lines_index=i
+		break
+
+output = '\n'.join(lines[lead_lines_index+1:tail_lines_index])
+
+print output
+try:
+	sys.stdout.flush()
+except:
+	pass

@@ -1,0 +1,1302 @@
+# Some notes on syntax and conventions
+# Attributes that end in "_cmd" are assumed to be shell
+# commands, which will be executed in shell context
+# Each line of a multi-line _cmd will be executed
+# in its own sub-shell.  (i.e. don't count on 
+# exports or cd's being persistent from one line to 
+# the next)
+# 
+# The get_kernel_cmd should output the kernel source
+# to the directory specified by $KERNEL_SRC
+#===========================================================
+
+target=.config_defaults
+KBUILD_OUTPUT=../build/%(target)s
+INSTALL_MOD_PATH=../modules/%(target)s
+KERNEL_SRC=linux
+TMPDIR=/tmp
+get_kernel_cmd=git clone nserv.sm.sony.co.jp:/export/git/linux-3.0.y-BRANCH_SS-RT $KERNEL_SRC
+kbuild_cmd=time make -j 8 %(kimage)s
+login_cmd=telnet %(real_board)s
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/%(real_board)s/$dest
+copy_from_cmd=cp /target/%(real_board)s/$src $dest
+rm_cmd=rm /target/%(real_board)s/$dest
+run_cmd=telnet_exec -t %(real_board)s -u root -c "$COMMAND"
+reset_cmd=telnet_exec -t %(real_board)s -u root -c "reboot"
+console_cmd=minicom -w %(usb_port)s-115k
+
+#===========================================================
+target=master
+get_kernel_cmd=git clone nserv.sm.sony.co.jp:/export/git/linux-2.6.35-BRANCH_SS $KERNEL_SRC
+description="""This is a fake board, used for a direct-from-nserv get_kernel operation
+This is useful to populate the /home/tbird/work/ss-35/branch_ss directory.
+Use the command 'tc master get_kernel -o branch_ss' to do this."""
+
+#===========================================================
+
+target=osk2
+inherit_from=.config_defaults
+real_board=osk2
+description="""TI OMAP Starter Kit (OSK):
+OMAP5912 processor (ARM926EJ-S core and a C55x DSP)
+The ARM core runs at 192 MHZ.
+The board has 32 meg. of flash and 32 meg. Mobile DDR SDRAM,
+10 Mbit Ethernet interface, USB Host interface
+and a AIC23 stereo codec."""
+
+ipaddr=192.168.1.72
+
+#usb_port=USB4
+TOOL_PATH=/usr/local/arm-sony-linux/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-
+kimage=uImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/osk2
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/osk2/boot/uImage.osk2
+	cp -v $KBUILD_OUTPUT/System.map /target/osk2/boot/System.map
+	cp -v $KBUILD_OUTPUT/vmlinux /target/osk2/boot
+	cp -v $KBUILD_OUTPUT/System.map /target/osk2/tmp"""
+
+get_config_cmd=make osk_defconfig
+
+#===========================================================
+target=osk2-kernel.org
+inherit_from=osk2
+
+get_kernel_cmd="""get-kernel 2.6.27-rc1
+	if [ -d linux-2.6.27-rc1 ] ; then echo "error - kernel directory already present" ; exit 1 ; fi
+	tar -xjvf linux-2.6.27-rc1.tar.bz2
+	mv linux-2.6.27-rc1 $KERNEL_SOURCE """
+
+get_config_cmd="""make omap_osk_5912_defconfig
+	ttc set_config CONFIG_CMDLINE=\"console=ttyS0,115200\"
+	ttc set_config CONFIG_AEABI=n """
+
+#===========================================================
+target=osk2-git
+inherit_from=osk2-kernel.org
+
+get_kernel_cmd="""git clone /home/tbird/work/git.kernel.org/linux-2.6/
+	mv linux-2.6 $KERNEL_SOURCE """
+
+#===========================================================
+
+target=osk2_size_test
+inherit_from=osk2
+CROSS_COMPILE=ccache arm-sony-linux-
+get_kernel_cmd=cp -a /home/tbird/work/osk/linux-2.6.25 $KERNEL_SRC
+get_config_cmd=cp -v /home/tbird/work/osk/kernel.org-osk-config-plus $KBUILD_OUTPUT/.config
+
+#===========================================================
+
+target=osk2_kft
+real_board=osk2
+description="""TI OMAP Starter Kit (OSK):
+OMAP5912 processor (ARM926EJ-S core and a C55x DSP)
+The ARM core runs at 192 MHZ.
+The board has 32 meg. of flash and 32 meg. Mobile DDR SDRAM,
+10 Mbit Ethernet interface, USB Host interface
+and a AIC23 stereo codec."""
+
+ipaddr=192.168.1.72
+login_cmd=telnet osk2
+console_cmd=minicom -w osk2
+
+TOOL_PATH=/usr/local/arm-sony-linux/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-
+kimage=uImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/osk2_kft
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/osk2/boot/uImage.osk2
+	cp $KBUILD_OUTPUT/System.map /target/osk2/boot/System.map
+	cp $KBUILD_OUTPUT/vmlinux /target/osk2/boot
+	cp $KBUILD_OUTPUT/System.map /target/osk2/tmp"""
+#reset_cmd=echo "remote reset not supported" ; false
+#reset_cmd=echo "Please manually reset the OSK board, by pressing the white button on the board" ; sleep 10 ; true
+reset_cmd=telnet_exec -t osk2 -u root -c "reboot"
+
+get_kernel_cmd=tla get -A alp@oak--linux-3 alp-linux--dev-3--3.1 $KERNEL_SRC
+get_config_cmd=make alp_linux_osk_defconfig
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/osk2/$dest
+copy_from_cmd=cp /target/osk2/$src $dest
+rm_cmd=rm /target/osk2/$dest
+run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
+
+#===========================================================
+
+target=osk2_mix
+real_board=osk2
+description="""TI OMAP Starter Kit (OSK):
+OMAP5912 processor (ARM926EJ-S core and a C55x DSP)
+The ARM core runs at 192 MHZ.
+The board has 32 meg. of flash and 32 meg. Mobile DDR SDRAM,
+10 Mbit Ethernet interface, USB Host interface
+and a AIC23 stereo codec."""
+
+ipaddr=192.168.1.72
+login_cmd=telnet osk2
+console_cmd=minicom -w osk2
+
+TOOL_PATH=/usr/local/arm-sony-linux/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-
+kimage=uImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/osk2_mix
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/osk2/boot/uImage.osk2
+	cp $KBUILD_OUTPUT/System.map /target/osk2/boot/System.map
+	cp $KBUILD_OUTPUT/vmlinux /target/osk2/boot
+	cp $KBUILD_OUTPUT/System.map /target/osk2/tmp"""
+#reset_cmd=echo "remote reset not supported" ; false
+#reset_cmd=echo "Please manually reset the OSK board, by pressing the white button on the board" ; sleep 10 ; true
+reset_cmd=telnet_exec -t osk2 -u root -c "reboot"
+
+get_kernel_cmd=tla get -A alp@oak--linux-3 alp-linux--dev-3--3.1 $KERNEL_SRC
+get_config_cmd=make alp_linux_osk_defconfig
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/osk2/$dest
+copy_from_cmd=cp /target/osk2/$src $dest
+rm_cmd=rm /target/osk2/$dest
+run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
+
+#===========================================================
+target=osk2-11
+real_board=osk2
+description="""TI OMAP Starter Kit (OSK):
+OMAP5912 processor (ARM926EJ-S core and a C55x DSP)
+The ARM core runs at 192 MHZ.
+The board has 32 meg. of flash and 32 meg. Mobile DDR SDRAM,
+10 Mbit Ethernet interface, USB Host interface
+and a AIC23 stereo codec."""
+
+ipaddr=192.168.1.72
+login_cmd=telnet osk2
+console_cmd=minicom -w osk2
+
+TOOL_PATH=/usr/local/arm-sony-linux/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-
+kimage=uImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/osk2-11
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/osk2/boot/uImage.osk2
+	cp $KBUILD_OUTPUT/System.map /target/osk2/tmp"""
+#reset_cmd=echo "remote reset not supported" ; false
+#reset_cmd=echo "Please manually reset the OSK board, by pressing the white button on the board" ; sleep 10 ; true
+reset_cmd=telnet_exec -t osk2 -u root -c "reboot"
+#old_get_kernel_cmd=export CVSRSH=/usr/bin/ssh ; cvs -d :ext:oak.sm.sony.co.jp:/var/cvsroot co -r branch_ALP_LINUX -d $KERNEL_SRC linux-2.6
+
+get_kernel_cmd=tla get -A alp@oak--linux-2 alp-linux--dev-2-6-11--1.15 $KERNEL_SRC
+get_config_cmd=make alp_linux_osk_defconfig
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/osk2/$dest
+copy_from_cmd=cp /target/osk2/$src $dest
+rm_cmd=rm /target/osk2/$dest
+run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
+
+#===========================================================
+
+target=adp1
+description="""Android Developer Phone 1 with a
+Qualcomm MSM7201 ARM-based CPU, running at 528 MHZ
+96M RAM and 256M Flash"""
+
+ipaddr=192.168.1.72
+#login_cmd=telnet android
+login_cmd=adb shell
+console_cmd=adb shell
+
+TOOL_PATH=/a/home/tbird/work/ss-android/prebuilt/linux-x86/toolchain/arm-eabi-4.2.1/bin
+ARCH=arm
+CROSS_COMPILE=arm-eabi-
+kimage=zImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/adp1
+kbuild_cmd=make $kimage
+kinstall_cmd=cp $KBUILD_OUTPUT/arch/arm/boot/zImage 
+get_kernel_cmd=git clone git://android.git.kernel.org/kernel/msm.git $KERNEL_SRC
+get_config_cmd=make msm_defconfig
+
+# also: get_config_cmd=adb pull /proc/config.gz . ; zcat config.gz >$KBUILD_OUTPUT/.config
+
+copy_to_cmd=adb push $src $dest
+copy_from_cmd=adb pull $src $dest
+rm_cmd=adb shell rm $dest
+run_cmd=adb shell "$COMMAND"
+
+#===========================================================
+
+target=goldfish
+description="""Android Emulator
+To set up environment, go to 'work/mydroid' and do:
+  source build/envsetup.sh
+  source setup-mydroid-build-env.sh
+"""
+
+ipaddr=
+#login_cmd=telnet android
+login_cmd=adb shell
+console_cmd=adb shell
+
+TOOL_PATH=/a/home/tbird/work/mydroid/prebuilt/linux-x86/toolchain/arm-eabi-4.2.1/bin
+ARCH=arm
+CROSS_COMPILE=arm-eabi-
+kimage=zImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/goldfish
+kbuild_cmd=make $kimage
+kinstall_cmd=cp $KBUILD_OUTPUT/arch/arm/boot/zImage $ANDROID_PRODUCT_OUT/kernel-qemu
+get_kernel_cmd="""git clone git://android.git.kernel.org/kernel/common.git $KERNEL_SRC
+	cd $KERNEL_SRC ; git checkout origin/android-goldfish-2.6.29"""
+
+get_config_cmd=make goldfish_defconfig
+
+# also: get_config_cmd=adb pull /proc/config.gz . ; zcat config.gz >$KBUILD_OUTPUT/.config
+
+copy_to_cmd=adb push $src $dest
+copy_from_cmd=adb pull $src $dest
+rm_cmd=adb shell rm $dest
+run_cmd=adb shell "$COMMAND"
+
+#===========================================================
+
+target=g1
+description="""Android Developer Phone 1 with a
+Qualcomm MSM7201 ARM-based CPU, running at 528 MHZ
+96M RAM and 256M Flash"""
+
+ipaddr=192.168.1.72
+#login_cmd=telnet android
+login_cmd=adb shell
+console_cmd=adb shell
+
+TOOL_PATH=/a/home/tbird/work/ss-android/prebuilt/linux-x86/toolchain/arm-eabi-4.2.1/bin
+ARCH=arm
+CROSS_COMPILE=arm-eabi-
+kimage=zImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/g1
+kbuild_cmd=make $kimage
+kinstall_cmd_recovery=cd ../build ; update-recovery-kernel.sh g1/arch/arm/boot/zImage 
+kinstall_cmd="""echo "reboot phone into fastboot mode \(camera+power, then \'back\' key\)"
+cd ../build ; fastboot boot g1/arch/arm/boot/zImage recovery.img-ramdisk.cpio.gz
+"""
+get_kernel_cmd=git clone git://android.git.kernel.org/kernel/msm.git $KERNEL_SRC
+get_config_cmd=make msm_defconfig
+
+# also: get_config_cmd=adb pull /proc/config.gz . ; zcat config.gz >$KBUILD_OUTPUT/.config
+
+copy_to_cmd=adb push $src $dest
+copy_from_cmd=adb pull $src $dest
+rm_cmd=adb shell rm $dest
+run_cmd=adb shell "$COMMAND"
+
+#===========================================================
+target=timdesk_fedora
+description="""Tim's current desktop machine.
+DELL Studio XPS, running a quadcore I7 975 at 3.33 GHz
+8 Gig. RAM, 400 Gig. disk"""
+
+ipaddr=43.135.148.222
+
+KBUILD_OUTPUT=../build/timdesk
+kimage=bzImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+kbuild_cmd=make -j 10 $kimage
+kinstall_cmd="""sudo cp -v arch/x86_64/boot/bzImage /boot/vmlinuz-%(kernel_version)s
+	sudo cp -v .config /boot/config-%(kernel_version)s
+	sudo cp -v System.map /boot/System.map-%(kernel_version)s
+"""
+get_kernel_cmd=git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git $KERNEL_SRC
+#get_config_cmd=cp /a/home/tbird/work/timdesk/configs/config-2.6.33-rc8-x86_64 .config
+#get_config_cmd=cp /boot/config-2.6.32.9-67.fc12.x86_64 .config
+get_config_cmd=cp /boot/config-2.6.34-rc7 $(KBUILD_OUTPUT)/.config
+
+#===========================================================
+target=seq
+real_board=seq
+inherit_from=.config_defaults
+description="""AMCC "Sequoia" board
+PowerPC 440 EPx Evaluation kit
+"""
+
+ipaddr=192.168.1.72
+
+TOOL_PATH=/usr/local/arm-sony-linux/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-
+kimage=uImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/seq
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/osk2/boot/uImage.osk2
+	cp $KBUILD_OUTPUT/System.map /target/osk2/boot/System.map
+	cp $KBUILD_OUTPUT/vmlinux /target/osk2/boot
+	cp $KBUILD_OUTPUT/System.map /target/osk2/tmp"""
+#reset_cmd=echo "remote reset not supported" ; false
+#reset_cmd=echo "Please manually reset the OSK board, by pressing the white button on the board" ; sleep 10 ; true
+reset_cmd=telnet_exec -t %(target)s -u root -c "reboot"
+
+get_kernel_cmd=tla get -A alp@oak--linux-3 alp-linux--dev-3--3.1 $KERNEL_SRC
+get_config_cmd=make alp_linux_osk_defconfig
+
+#===========================================================
+
+target=.ss_local_respository
+get_kernel_cmd=cg clone git+ssh://home/tbird/work/ss-23/branch_ss $KERNEL_SRC
+
+#===========================================================
+
+target=seq-ccache-ss
+inherit_from=.ss_local_respository, seq
+CROSS_COMPILE=ccache arm-sony-linux-
+
+#===========================================================
+target=seq2
+inherit_from=seq-ccache-ss
+KBUILD_OUTPUT=../foo/bar/baz/bat
+
+
+#===========================================================
+target=nut
+description="""Nut is an x86-based desktop computer, with:
+Intel Celeron processor, running at 2 GHz.
+The machine has 128 meg. of RAM and a 40G IDE hard drive."""
+
+reset_cmd=nut-reset
+console_cmd=minicom -w nut
+login_cmd=telnet nut
+#ipaddr=192.168.1.14
+
+#TOOL_PATH=/usr/local/i386-sony-linux/devel/bin
+ARCH=i386
+#CROSS_COMPILE=i386-sony-linux-
+INSTALL_PATH=/target/nut/boot
+KERNEL_SRC=linux
+KBUILD_OUTPUT=../build/nut
+INSTALL_MOD_PATH=/target/nut
+
+kimage=bzImage
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/i386/boot/bzImage /target/nut/boot/vmlinuz
+	cp $KBUILD_OUTPUT/System.map /target/nut/boot
+	cp $KBUILD_OUTPUT/System.map /target/nut/tmp"""
+#kinstall_cmd=make INSTALL_PATH=$INSTALL_PATH install
+#get_kernel_cmd="""tar -xjf /home/rbatest/base/linux-2.6.10.tar.bz2
+#		mv linux-2.6.10 $KERNEL_SRC"""
+get_kernel_cmd=tla get -A alp@oak--linux-2 alp-linux--dev-2 $KERNEL_SRC
+get_config_cmd=make alp_linux_pc_defconfig
+
+copy_to_cmd=cp $src /target/nut/$dest
+copy_from_cmd=cp /target/nut/$src $dest
+rm_cmd=rm /target/nut/$dest
+run_cmd=telnet_exec -t nut -u root -c "$COMMAND"
+
+#===========================================================
+target=ebony_fake
+description="""Ebony (San Jose) is an IBM PowerPC development baord, with:
+PowerPC 440GP processor, running at 400? GHz.
+The machine has 128 meg. of RAM."""
+
+ipaddr=192.168.1.54
+reset_cmd=ebony-reset
+console_cmd=minicom -w ebony
+login_cmd=telnet ebony
+
+TOOL_PATH=/usr/local/powerpc-sony-linux/devel/bin
+ARCH=ppc
+CROSS_COMPILE=powerpc-sony-linux-
+TMPDIR=/tmp
+KERNEL_SRC=linux
+KBUILD_OUTPUT=../build/ebony
+kimage=zImage
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/ppc/boot/images/zImage.ebony /target/ebony/boot
+	cp $KBUILD_OUTPUT/System.map /target/ebony/tmp"""
+
+get_kernel_cmd=tla get -A alp@oak--linux-2 alp-linux--dev-2 $KERNEL_SRC
+#get_config_cmd="""export CVSRSH=/usr/bin/ssh ; cd $TMPDIR ; cvs -d :ext:oak.sm.sony.co.jp:/var/cvsroot co local-dev/team/configs/config-ebony-baseline ; cd -
+#	cp $TMPDIR/local-dev/team/configs/config-ebony-baseline $KBUILD_OUTPUT/.config"""
+
+get_config_cmd=make alp_linux_ebony_defconfig
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/ebony$dest
+copy_from_cmd=cp /target/ebony$src $dest
+rm_cmd=rm -f /target/ebony/$dest
+run_cmd=telnet_exec -t ebony -u root -c "$COMMAND"
+
+#===========================================================
+target=g5_fake
+description=Macintosh G5
+
+TOOL_PATH=/opt/crosstool/ppc64/bin
+ARCH=powerpc
+CROSS_COMPILE=powerpc64-unknown-linux-gnu-
+kimage=zImage
+#kimage=zImage.vmode
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/g5
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/ppc64/boot/$kimage /target/g5/boot
+	cp $KBUILD_OUTPUT/System.map /target/g5/tmp"""
+reset_cmd=echo "Remote reset not supported" ; false
+get_kernel_cmd=tla get -A alp@oak--linux-2 alp-linux--dev-2 $KERNEL_SRC
+get_config_cmd=make alp_linux_g5_defconfig
+login_cmd=echo root password is \"r\" ; ssh root@g5
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/g5/$dest
+copy_from_cmd=cp /target/g5/$src $dest
+rm_cmd=rm /target/g5/$dest
+run_cmd=telnet_exec -t g5 -u root -c "$COMMAND"
+#===========================================================
+target=tx49_fake
+description=tx49xx board with MIPS processor
+
+TOOL_PATH=/usr/local/mips-sony-linux/devel/bin
+ARCH=mips
+CROSS_COMPILE=mips-sony-linux-
+kimage=vmlinux
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/tx49
+kbuild_cmd=make CROSS_COMPILE=mips-sony-linux- vmlinux
+kinstall_cmd_cheat="""cp -v $KBUILD_OUTPUT/vmlinux /target/tx49/boot
+	cp $KBUILD_OUTPUT/System.map /target/tx49/boot
+	echo Please type 'load -E' in the PMON bootloader
+	#read -p "Press enter to continue:"
+	echo On the host, please type:
+	echo "cd /target/tx49/boot ; tftp -m binary tx49 -c put vmlinux ; cd -"
+	echo Please type 'g' in the PMON bootloader"""
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/vmlinux /target/tx49/boot
+	cp $KBUILD_OUTPUT/System.map /target/tx49/boot
+	echo Please type 'load -E' in the PMON bootloader
+	read -p "Press enter to continue:"
+	cd /target/tx49/boot ; tftp -m binary tx49 -c put vmlinux ; cd -
+	echo Please type 'g' in the PMON bootloader"""
+#reset_cmd=echo "remote reset not supported" ; false
+get_kernel_cmd=tla get -A alp@oak--linux-2 alp-linux--dev-2 $KERNEL_SRC
+
+get_config_cmd=make CROSS_COMPILE=mips-sony-linux- alp_linux_tx49_defconfig
+console_cmd=minicom -w tx49
+login_cmd=telnet tx49
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/tx49/$dest
+copy_from_cmd=cp /target/tx49/$src $dest
+rm_cmd=rm /target/tx49/$dest
+run_cmd=telnet_exec -t tx49 -u root -c "$COMMAND"
+
+#===========================================================
+
+target=osk2_eabi
+target_alias=o2
+real_board=osk2
+description="""TI OMAP Starter Kit (OSK):
+OMAP5912 processor (ARM926EJ-S core and a C55x DSP)
+The ARM core runs at 192 MHZ.
+The board has 32 meg. of flash and 32 meg. Mobile DDR SDRAM,
+10 Mbit Ethernet interface, USB Host interface
+and a AIC23 stereo codec."""
+
+ipaddr=192.168.1.72
+login_cmd=telnet osk2
+console_cmd=minicom -w osk2
+
+TOOL_PATH=/usr/local/arm-sony-linux-gnueabi/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-gnueabi-dev-
+kimage=uImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/osk2_eabi
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/osk2/boot/uImage.osk2
+	cp $KBUILD_OUTPUT/vmlinux /target/osk2/boot
+	cp $KBUILD_OUTPUT/System.map /target/osk2/boot/System.map.osk2
+	cp $KBUILD_OUTPUT/System.map /target/osk2/tmp"""
+
+reset_cmd=telnet_exec -t osk2 -u root -c "reboot"
+#get_kernel_cmd=tla get -A alp@oak--linux-2 alp-linux--dev-2 $KERNEL_SRC
+get_kernel_cmd=tla get -A alp@oak--linux-3 alp-linux--dev-3 $KERNEL_SRC
+get_config_cmd=make alp_linux_osk_defconfig
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/osk2/$dest
+copy_from_cmd=cp /target/osk2/$src $dest
+rm_cmd=rm /target/osk2/$dest
+run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
+
+#===========================================================
+
+target=kzm
+description=KZM-ARM11 development board
+
+ipaddr=192.168.1.72
+login_cmd=telnet kzm
+console_cmd=minicom -w kzm
+
+TOOL_PATH=/usr/local/arm-sony-linux-gnueabi/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-gnueabi-dev-
+kimage=zImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/kzm
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/zImage /target/kzm/boot
+	cp $KBUILD_OUTPUT/System.map /target/kzm/boot/System.map
+	cp $KBUILD_OUTPUT/vmlinux /target/kzm/boot
+	cp $KBUILD_OUTPUT/System.map /target/kzm/tmp"""
+#reset_cmd=echo "remote reset not supported" ; false
+#reset_cmd=echo "Please manually reset the OSK board, by pressing the white button on the board" ; sleep 10 ; true
+reset_cmd=telnet_exec -t osk2 -u root -c "reboot"
+
+get_kernel_cmd=tla get -A alp@oak--linux-3 alp-linux--dev-3--3.1 $KERNEL_SRC
+get_config_cmd=make kzm-arm11_defconfig
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/kzm/$dest
+copy_from_cmd=cp /target/kzm/$src $dest
+rm_cmd=rm /target/kzm/$dest
+run_cmd=telnet_exec -t kzm -u root -c "$COMMAND"
+
+#===========================================================
+
+target=ati
+description=Sony ATI (Xillian) development board
+
+ipaddr=192.168.1.92
+login_cmd=telnet ati
+console_cmd=minicom -w ati
+
+TOOL_PATH=/usr/local/mipsel-linux/bin
+ARCH=mips
+CROSS_COMPILE=mipsel-linux-
+kimage=vmlinux
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=.
+kbuild_cmd=make CROSS_COMPILE=mipsel-linux- vmlinux
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/vmlinux /target/ati/boot
+	cp $KBUILD_OUTPUT/System.map /target/ati/boot/System.map
+	cp $KBUILD_OUTPUT/System.map /target/kzm/tmp"""
+#reset_cmd=echo "remote reset not supported" ; false
+#reset_cmd=echo "Please manually reset the OSK board, by pressing the white button on the board" ; sleep 10 ; true
+reset_cmd=telnet_exec -t ati -u root -c "reboot"
+
+get_kernel_cmd=cp -a /home/tbird/work/tvoa/ATI08 $KERNEL_SRC
+get_config_cmd=cp /home/tbird/work/tvoa/ATI08/.config $KBUILD_OUTPUT/.config 
+
+target_bin=/usr/bin
+copy_to_cmd=cp $src /nfsroot_gtx/$dest
+copy_from_cmd=cp /nfsroot_gtx/$src $dest
+rm_cmd=rm /nfsroot_gtx/$dest
+run_cmd=telnet_exec -t ati -u root -c "$COMMAND"
+
+#===========================================================
+
+target=mario-old
+description=Mario development board from TVOA
+
+ipaddr=192.168.1.93
+login_cmd=telnet mario
+console_cmd=minicom -w USB0-115k
+
+TOOL_PATH=/usr/local/mipsel-linux/bin
+ARCH=mips
+CROSS_COMPILE=mipsel-linux-
+kimage=vmlinux
+KERNEL_SRC=linux
+TMPDIR=/tmp
+#KBUILD_OUTPUT=.
+KBUILD_OUTPUT=../build/mario
+kbuild_cmd=make ARCH=mips CROSS_COMPILE=mipsel-linux- vmlinux
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/vmlinux /target/mario/boot
+	cp -v $KBUILD_OUTPUT/System.map /target/mario/boot/System.map
+	cp -v $KBUILD_OUTPUT/System.map /target/mario/tmp"""
+
+reset_cmd=telnet_exec -t mario -u root -c "reboot"
+
+get_kernel_cmd=cp -a /home/tbird/work/mario/p4stuff/linux $KERNEL_SRC
+get_config_cmd="""cp -v arch/mips/configs/x260_nfs_bringup $KBUILD_OUTPUT/.config 
+	 chmod a+w $KBUILD_OUTPUT/.config"""
+
+target_bin=/usr/bin
+copy_to_cmd=cp $src /nfsroot_gtx/$dest
+copy_from_cmd=cp /nfsroot_gtx/$src $dest
+rm_cmd=rm /nfsroot_gtx/$dest
+run_cmd=telnet_exec -t mario -u root -c "$COMMAND"
+
+#===========================================================
+target=mario3
+inherit_from=mario-old
+
+get_kernel_cmd=cp -a /home/tbird/work/mario/p4stuff/linux255 $KERNEL_SRC
+
+get_config_cmd="""cp -v arch/mips/configs/x255_board_nfs_defconfig $KBUILD_OUTPUT/.config 
+	 chmod a+w $KBUILD_OUTPUT/.config"""
+
+#kbuild_cmd=make V=1 ARCH=mips CROSS_COMPILE=mipsel-linux- vmlinux
+kbuild_cmd=make ARCH=mips CROSS_COMPILE=mipsel-linux- vmlinux
+
+reset_cmd="""echo "Press the green button on the debug board to reset the target"
+	read -p "Press enter to continue:"
+	echo boot >/dev/ttyUSB0
+	sleep 10
+	echo "g root=/dev/nfs nfsroot=192.168.2.1:/nfsroot_gtx rw ip=192.168.2.93 time" >/dev/ttyUSB0
+"""
+
+#============================================
+target=evt
+description=EVT-BU development board from FTVA
+
+ipaddr=192.168.1.95
+login_cmd=telnet evt
+console_cmd=minicom -w USB0-115k
+
+TOOL_PATH=/usr/local/mipsel-linux/bin
+ARCH=mips
+CROSS_COMPILE=mipsel-linux-
+kimage=vmlinux
+KERNEL_SRC=linux255
+TMPDIR=/tmp
+# Must not use KBUILD_OUTPUT=. (this freaks out the 2.6.11 build)
+#KBUILD_OUTPUT=.
+
+get_kernel_cmd="""cp -a /home/tbird/work/evt/p4stuff/linux255 $KERNEL_SRC
+	chmod -R ug+w $KERNEL_SRC"""
+
+#get_config_cmd="""cp -v arch/mips/configs/x255_board_nfs_defconfig $KBUILD_OUTPUT/.config 
+#	 chmod a+w $KBUILD_OUTPUT/.config"""
+#KBUILD_OUTPUT=../build/evt
+#kbuild_cmd_old=make ARCH=mips CROSS_COMPILE=mipsel-linux- vmlinux
+
+kbuild_cmd=source environment.sh ; ./rebuildKernel.sh
+
+kinstall_cmd="""cp -v vmlinux vmlinux-devel
+	cp -v vmlinux-devel /Perforce/ati09/US/X255/Src/Product/Kernel/vmlinux-devel
+	cp -v vmlinux-devel /target/evt/boot/vmlinux
+	cp -v System.map /target/evt/boot/System.map"""
+
+#kinstall_cmd_old="""cp -v $KBUILD_OUTPUT/vmlinux /target/evt/boot
+#	cp -v $KBUILD_OUTPUT/System.map /target/evt/boot/System.map
+#	cp -v $KBUILD_OUTPUT/System.map /target/evt/tmp"""
+
+reset_cmd=telnet_exec -t evt -u root -c "reboot"
+
+target_bin=/usr/bin
+copy_to_cmd=fname=`basename $src` ; cp $src /target/evt/tmp/$fname ; ttc evt run "tftp -g -l $dest -r /evt/tmp/$fname 192.168.2.1"
+copy_from_cmd=fname=`basename $src` ; ttc evt run "tftp -p -l $src -r /evt/tmp/$fname 192.168.2.1" ; cp /target/evt/tmp/$fname $dest 
+rm_cmd=ttc evt run "rm $dest"
+run_cmd=telnet_exec -t evt -u root -c "$COMMAND"
+
+
+#kbuild_cmd=make V=1 ARCH=mips CROSS_COMPILE=mipsel-linux- vmlinux
+kbuild_cmd=make ARCH=mips CROSS_COMPILE=mipsel-linux- vmlinux
+
+reset_cmd="""echo "Press the green button on the debug board to reset the target"
+	read -p "Press enter to continue:"
+	echo boot >/dev/ttyUSB0
+	sleep 10
+	echo "g root=/dev/nfs nfsroot=192.168.2.1:/nfsroot_gtx rw ip=192.168.2.93 time" >/dev/ttyUSB0
+"""
+
+#============================================
+target=evm
+real_board=evm
+inherit_from=.config_defaults
+description="""Texas Instruments OMAP EVM board
+600 MHZ Coretex-A8 processor
+128M RAM, 32K L1 cache, 256K L2 cache
+HVGA 640x480 touchscreen LCD, DVI and TV video out
+"""
+
+usb_port=USB0
+ipaddr=192.168.2.96
+ADBHOST=%(ipaddr)s
+
+TOOL_PATH=/opt/omap3evm/toolchain/arm-2007q3/bin:/home/tbird/work/evm/rowboat/rowboat-source/out/host/linux-x86/bin
+ARCH=arm
+CROSS_COMPILE=arm-none-eabi-
+kimage=uImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/evm
+get_config_cmd=make omap3_evm_android_defconfig
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/evm/boot/uImage
+	cp $KBUILD_OUTPUT/System.map /target/evm/boot/System.map"""
+
+reset_cmd=telnet_exec -t %(target)s -u root -c "reboot"
+console_cmd=minicom -w USB0-115k
+
+reset_cmd="""echo "Press the top-left black button on the board to reset the target"
+	read -p "Press enter to continue:"
+"""
+
+#	echo boot >/dev/ttyUSB0
+#
+#============================================
+target=evm-rowboat
+real_board=evm
+description="""Texas Instruments OMAP EVM board
+with settings for building rowboat Android
+"""
+
+ipaddr=192.168.2.96
+ADBHOST=%(ipaddr)s
+
+TOOL_PATH=/home/tbird/work/evm/rowboat/rowboat-android/prebuilt/linux-x86/toolchain/arm-eabi-4.4.0/bin
+ARCH=arm
+CROSS_COMPILE=arm-eabi-
+get_config_cmd=make omap3_evm_android_defconfig
+# increment localversion (debug kernel version) on each build
+# localversion file has -d<num>
+kbuild_cmd="""echo -d$(($(cat localversion | cut -b 3-) + 1)) >localversion
+	echo new localversion=$(cat localversion)
+	make uImage
+"""
+kinstall_cmd="""cp -v arch/arm/boot/uImage /target/evm/boot/uImage
+	cp System.map /target/evm/boot/System.map"""
+
+console_cmd=minicom -w %(usb_port)s-115k
+reset_cmd="""echo "Press the top-left black button on the board to reset the target"
+	read -p "Press enter to continue:"
+"""
+
+#============================================
+target=ebook
+description="""Innsbruck e-book development board
+ with Freescale MX31 EBX5016 processor,
+ 256M RAM"""
+
+ipaddr=192.168.2.98
+
+TOOL_PATH=/home/tbird/work/ebook/android/prebuilt/linux-x86/toolchain/arm-eabi-4.2.1/bin
+ARCH=arm
+CROSS_COMPILE=arm-eabi-
+kimage=zImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/ebook
+#KBUILD_OUTPUT=.
+#get_config_cmd=make innsbruck_defconfig
+#get_config_cmd=make defconfig
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/zImage /target/ebook/boot/zImage.inns
+	cp $KBUILD_OUTPUT/System.map /target/ebook/boot/System.map"""
+
+reset_cmd=telnet_exec -t %(target)s -u root -c "reboot"
+console_cmd=minicom -w USB2-115k
+
+reset_cmd="""echo -n "Press the reset button on the board, followed by"
+	echo -n "button 3015 (lower right black button), to reset the target"
+	read -p "Press enter to continue:"
+"""
+
+#============================================
+target=blacksand
+description="""Intel blacksand development board
+ with ATOM processor"""
+
+#ipaddr=192.168.2.98
+
+#TOOL_PATH=/home/tbird/work/ebook/android/prebuilt/linux-x86/toolchain/arm-eabi-4.2.1/bin
+#ARCH=arm
+#CROSS_COMPILE=arm-eabi-
+kimage=vmlinuz
+#KERNEL_SRC=linux
+#TMPDIR=/tmp
+KBUILD_OUTPUT=../build/blacksand
+#get_config_cmd=make innsbruck_defconfig
+#get_config_cmd=make defconfig
+kbuild_cmd=make $kimage
+#kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/zImage /target/ebook/boot/zImage.inns
+#	cp $KBUILD_OUTPUT/System.map /target/ebook/boot/System.map"""
+
+#reset_cmd=telnet_exec -t %(target)s -u root -c "reboot"
+console_cmd=minicom -w USB1-115k
+
+reset_cmd="""echo -n "Press the power button on the board, for 4 seconds."
+"""
+#============================================
+target=panda
+inherit_from=.config_defaults
+real_board=panda
+description="""The panda board, uses the OMAP chip from TI
+This configuration in ttc uses a specially formatted SD card.
+The card has 3 partitions:
+ partition 1: a FAT partition with the bootloader (multiple stages)
+   and uImage and uImage.new
+ partition 2: an ext3 partition with the backup root filesysem on it
+ partition 3: an ext3 partition with the "new" root filesystem on it
+
+If no parameters are changed in u-boot, then it will boot 'uImage'
+using /dev/mmcblk0p2 as the rootfs.  The 'ttc reboot' command will
+boot 'uImage.new' using /dev/mmcblk0p3 as the rootfs.  The 'ttc kinstall'
+command puts a new 'uImage.new' on /dev/mmcblk0p1.
+
+The default kernel is a 2.6.35-g6d019da kernel built on Sep 1 2010.
+The default rootfs is a version of Angstrom.
+
+"""
+
+ARCH=arm
+kimage=uImage
+TOOL_PATH=/opt/CE-Linux-8.0.1.2/arm-sony-linux-gnueabi/cross/devel/bin:/opt/CE-Linux-8.0.1.2/${ARCH}/host/bin
+CROSS_COMPILE=arm-sony-linux-gnueabi-armv7a-dev-
+
+ipaddr=192.168.2.94
+
+get_kernel_cmd=git clone ~/work/ss-3.0-rt/linux-3.0.y-BRANCH_SS-RT $KERNEL_SRC
+get_config_cmd="""make omap2plus_defconfig
+	ttc set_config CONFIG_USB_EHCI_HCD=y CONFIG_MFD_OMAP_USB_HOST=y CONFIG_USB_EHCI_ROOT_HUB_TT=N CONFIG_USB_EHCI_TT_NEWSCHED=y CONFIG_USB_EHCI_HCD_OMAP=y CONFIG_USB_EHCI_MV=n
+	ttc set_config CONFIG_USB_NET_SMSC95XX=y CONFIG_USB_SISUSBVGA=n
+	make silentoldconfig
+"""
+
+kinstall_cmd="""powerswitch-cycle -n panda -d 3 -o 3
+    ttc wait_for -i 1 -t 30 "ping -c 1 -w 1 panda >/dev/null"
+    #ttc run "mount /dev/mmcblk0p1 /media/mmcblk0p1"
+    scp_exec_to -t panda -u root $KBUILD_OUTPUT/arch/arm/boot/uImage /media/mmcblk0p1/uImage.new
+    ttc run sync
+    ttc run "umount /media/mmcblk0p1"
+    """
+
+# FIXTHIS - for kinstall, try to put kernel on MMC card, using existing kernel
+# if that doesn't work, boot into base kernel and rfsbase rootfs, and
+# use that kernel to copy the file to /media/mmcblk0p1
+
+# This doesn't work because the filesystem on mmcblk0p2 (the default for
+# uImage with 2.6.35) doesn't boot with ssh
+kinstall_cmd_new="""
+    # try it without rebooting to default uImage
+    scp_exec_to -t panda -u root $KBUILD_OUTPUT/arch/arm/boot/uImage /media/mmcblk0p1/uImage.new
+
+    # check to see if image got there
+    # (the following lines have to be a single line)
+    h1=$(md5sum $KBUILD_OUTPUT/arch/arm/boot/uImage | cut -b -32) ; \
+    h2=$(ttc run "md5sum /media/mmcblk0p1/uImage.new" | cut -b -32) ; \
+    echo "comparing hashes: h1=$h1  --- h2=$h2" ; \
+    if [ $h1 == $h2 ] ; then \
+       echo "First kernel install attempt worked, skipping backup" ; exit -1 ; \
+    fi
+
+    # OK - that didn't work, try it using backup kernel
+    powerswitch-cycle -n panda -d 3 -o 3
+    ttc wait_for -i 1 -t 30 "ping -c 1 -w 1 panda >/dev/null"
+    #ttc run "mount /dev/mmcblk0p1 /media/mmcblk0p1"
+    scp_exec_to -t panda -u root $KBUILD_OUTPUT/arch/arm/boot/uImage /media/mmcblk0p1/uImage.new
+    ttc run sync
+    ttc run "umount /media/mmcblk0p1"
+    """
+
+
+usb_port=USB0
+
+# this is tricky - powercycle the board, but break in during the u-boot
+# countdown by sending returns at 1-second intervals
+# adjust the bootargs to use the 3rd partition, and boot uimage.new instead
+# of uimage
+reboot_cmd_save="""powerswitch-cycle -n panda -d 3 -o 3
+    for i in $(seq 4); do echo " " >/dev/tty%(usb_port)s ; sleep 1; done
+    echo "setenv bootargs 'console=ttyO2,115200n8 mem=463M root=/dev/mmcblk0p3 rw rootwait init=/linuxrc'" >/dev/tty%(usb_port)s
+    echo "mmcinit 0;fatload mmc 0 0x80000000 uimage.new; bootm 80000000" >/dev/tty%(usb_port)s
+echo 
+"""
+
+reboot_cmd="""echo powerswitch-cycle -n panda -d 3 -o 3
+    echo sleeping 3
+    sleep 3
+    for i in $(seq 4); do echo " " >/dev/tty%(usb_port)s ; sleep 1; done
+    echo "setenv bootargs 'console=ttyO2,115200n8 root=/dev/mmcblk0p3 rw rootwait init=/linuxrc'" >/dev/tty%(usb_port)s
+    echo "mmcinit 0;fatload mmc 0 0x80000000 uimage.new; bootm 80000000" >/dev/tty%(usb_port)s
+echo 
+"""
+target_bin=/usr/bin
+copy_to_cmd=scp_exec_to -t panda -u root $src $dest
+copy_from_cmd=scp_exec_from -t panda -u root $src $dest
+run_cmd=ssh_exec -t panda -u root -c "$COMMAND"
+login_cmd=ssh -l root %(real_board)s
+
+#============================================
+target=panda-torvalds
+inherit_from=panda
+
+TOOL_PATH=/opt/omap3evm/toolchain/arm-2007q3/bin:/home/tbird/work/evm/rowboat-source/out/host/linux-x86/bin
+CROSS_COMPILE=arm-none-eabi-
+
+get_kernel_cmd=git clone /home/tbird/work/torvalds/linux-3 $KERNEL_SRC
+
+# note that DMADEVICES and DMA_OMAP are required for kernel version 3.6
+get_config_cmd="""make omap2plus_defconfig
+	ttc set_config CONFIG_MACH_OMAP4_PANDA=y CONFIG_DMADVICES=y CONFIG_DMA_OMAP=y
+	ttc set_config CONFIG_USB_EHCI_HCD=y CONFIG_MFD_OMAP_USB_HOST=y CONFIG_USB_EHCI_ROOT_HUB_TT=N CONFIG_USB_EHCI_TT_NEWSCHED=y CONFIG_USB_EHCI_HCD_OMAP=y CONFIG_USB_EHCI_MV=n CONFIG_USB_EHCI_HCD_PLATFORM=n
+	ttc set_config CONFIG_USB_SISUSBVGA=n
+	make silentoldconfig
+"""
+
+get_config_cmd_old="""make omap2plus_defconfig
+	ttc set_config CONFIG_USB_EHCI_HCD=y CONFIG_MFD_OMAP_USB_HOST=y CONFIG_USB_EHCI_ROOT_HUB_TT=N CONFIG_USB_EHCI_TT_NEWSCHED=y CONFIG_USB_EHCI_HCD_OMAP=y CONFIG_USB_EHCI_MV=n
+	ttc set_config CONFIG_USB_NET_SMSC95XX=y CONFIG_USB_SISUSBVGA=n
+	make oldconfig
+"""
+
+# stuff needed for NFS rootfs, according to
+# http://morschi.com/2011/08/17/booting-the-pandaboard-over-nfs/
+# CONFIG_NETWORK_FILESYSTEMS=y CONFIG_NFS_FS=y CONFIG_NFS_V3=y
+# CONFIG_NFS_V3_ACL=y CONFIG_ROOT_NFS=y
+
+#============================================
+target=panda-torvalds-initramfs
+inherit_from=panda-torvalds
+
+# echo "setenv bootargs 'console=ttyO2,115200n8 mem=463M root=/dev/mmcblk0p3 rw rootwait init=/linuxrc'"
+
+# minimal mem= value that worked: mem=24M
+# mem=32M worked
+# mem=16M did not work
+# mem=24M - yielded free total of 10884K (??)
+
+reboot_cmd="""powerswitch-cycle -n panda -d 3 -o 3
+    for i in $(seq 4); do echo " " >/dev/tty%(usb_port)s ; sleep 1; done
+    echo "setenv bootargs 'console=ttyO2,115200n8 rootwait mem=24M'" >/dev/tty%(usb_port)s
+    echo "mmcinit 0;fatload mmc 0 0x80000000 uimage.new; bootm 80000000" >/dev/tty%(usb_port)s
+echo 
+"""
+
+#============================================
+target=panda-memtrace
+inherit_from=panda-torvalds
+
+# this is tricky - powercycle the board, but break in during the u-boot
+# countdown by sending returns at 1-second intervals
+# adjust the bootargs to use the 3rd partition, and boot uimage.new instead
+# of uimage
+reboot_cmd="""powerswitch-cycle -n panda -d 3 -o 3
+    for i in $(seq 4); do echo " " >/dev/tty%(usb_port)s ; sleep 1; done
+    echo "setenv bootargs 'console=ttyO2,115200n8 mem=463M root=/dev/mmcblk0p3 rw rootwait init=/linuxrc trace_buf_size=10000000 trace_event=kmem:kmalloc,kmem:kmem_cache_alloc,kmem:kfree,kmem:kmem_cache_free'" >/dev/tty%(usb_port)s
+    echo "mmcinit 0;fatload mmc 0 0x80000000 uimage.new; bootm 80000000" >/dev/tty%(usb_port)s
+echo 
+"""
+
+#============================================
+target=panda-axfs
+inherit_from=panda-torvalds
+
+# echo "setenv bootargs 'console=ttyO2,115200n8 mem=463M root=/dev/mmcblk0p3 rw rootwait init=/linuxrc'"
+
+# minimal mem= value that worked: mem=24M
+# mem=32M worked
+# mem=16M did not work
+# mem=24M - yielded free total of 10884K (??)
+
+reboot_cmd="""powerswitch-cycle -n panda -d 3 -o 3
+    for i in $(seq 4); do echo " " >/dev/tty%(usb_port)s ; sleep 1; done
+    echo "setenv bootargs 'console=ttyO2,115200n8 mem=256M root=/dev/mmcblk0p3 rw rootwait init=/linuxrc'" >/dev/tty%(usb_port)s
+    echo "mmcinit 0;fatload mmc 0 0x80000000 uimage.new; bootm 80000000" >/dev/tty%(usb_port)s
+echo 
+"""
+
+#============================================
+target=panda-nfs
+inherit_from=panda-torvalds
+
+description="""A panda-board definition configured for NFS rootfs
+This system assumes a rootfs on host, with the path delivered by 
+dhcp.  Also, the kernel to boot is kept on the SD card in
+/media/mmcblk0p1/uImage.new
+
+A reboot will boot the image from the first FAT partition of the
+SD card, and then hand the kernel command line args to use NFS root.
+"""
+
+kinstall_cmd="""cp $KBUILD_OUTPUT/arch/arm/boot/uImage /target/panda/boot/uImage.new
+    # try it without rebooting to default uImage
+    ttc run "cp /boot/uImage.new /media/mmcblk0p1/uImage.new"
+
+    # check to see if image got there
+    # (the following lines have to be a single line)
+    export hash1=`md5sum /boot/uImage.new` ; \
+    export hash2=`ttc run "md5sum /media/mmcblk0p1/uImage.new"' ; \
+    if $hash1 == $hash2 ; then \
+       echo "First kernel install worked, skipping backup" ; exit -1 ; \
+    fi
+
+    # OK - that didn't work, try it using backup kernel
+    powerswitch-cycle -n panda -d 3 -o 3
+    echo " " >/dev/tty%(usb_port)s
+    sleep 1
+    echo " " >/dev/tty%(usb_port)s
+    sleep 1
+    echo "mmcinit 0" >/dev/tty%(usb_port)s
+    sleep 1
+    echo "setenv bootargs 'console=ttyO2,115200n8 vram=16M root=/dev/nfs ip=dhcp time'" >/dev/tty%(usb_port)s
+    echo "fatload mmc 0 0x82000000 uImage; bootm 0x82000000" >/dev/tty%(usb_port)s
+    ttc wait_for -i 1 -t 30 "ping -c 1 -w 1 panda >/dev/null"
+    sleep 5
+    ttc run "cp /boot/uImage.new /media/mmcblk0p1/uImage.new"
+    ttc run sync
+    ttc run "umount /media/mmcblk0p1"
+    """
+# kzm-a9 has: "root=/dev/nfs ip=dhcp"
+# old args: "root=/dev/nfs nfsroot=192.168.2.1:/pandaboard rw ip=192.168.2.94"
+reboot_cmd="""powerswitch-cycle -n panda -d 3 -o 3
+    echo " " >/dev/tty%(usb_port)s
+    sleep 1
+    echo " " >/dev/tty%(usb_port)s
+    sleep 1
+    echo " " >/dev/tty%(usb_port)s
+    sleep 1
+    echo "mmcinit 0" >/dev/tty%(usb_port)s
+    sleep 1
+    echo "setenv bootargs 'console=ttyO2,115200n8 vram=16M root=/dev/nfs ip=dhcp time'" >/dev/tty%(usb_port)s
+    echo "fatload mmc 0 0x82000000 uImage.new; bootm 0x82000000" >/dev/tty%(usb_port)s
+echo 
+"""
+
+reset_cmd="""powerswitch-cycle -n panda -d 3 -o 3
+    echo " " >/dev/tty%(usb_port)s
+    sleep 1
+    echo " " >/dev/tty%(usb_port)s
+    sleep 1
+    echo "mmcinit 0" >/dev/tty%(usb_port)s
+    sleep 1
+    echo "setenv bootargs 'console=ttyO2,115200n8 vram=16M root=/dev/nfs ip=dhcp time'" >/dev/tty%(usb_port)s
+    echo "fatload mmc 0 0x82000000 uImage; bootm 0x82000000" >/dev/tty%(usb_port)s
+echo 
+"""
+
+
+#============================================
+target=panda-android
+inherit_from=panda
+
+TOOL_PATH=/a/home/tbird/work/mydroid/prebuilt/linux-x86/toolchain/arm-eabi-4.2.1/bin
+CROSS_COMPILE=arm-eabi-
+
+reboot_cmd="""echo -n "Press the white reset button on the board (closest to SD card)"
+    echo -n "Then press space to stop the U-boot autoboot, in the console window"
+    echo -n "Then press [return] here to proceed."
+    read
+    echo "setenv bootargs 'console=ttyO2,115200n8 printk.time=1 mem=463M root=/dev/mmcblk0p2 rw rootdelay=2 init=/init vram=\"32M\" omapfb.vram=\"0:24M\"'" >/dev/tty%(usb_port)s
+    echo "mmcinit 0;fatload mmc 0 0x80000000 uimage; bootm 80000000" >/dev/tty%(usb_port)s
+"""
+login_cmd=adb shell
+#============================================
+target=panda-torvalds-lto
+inherit_from=panda-torvalds
+
+TOOL_PATH=/opt/android-toolchain-4.7/bin
+CROSS_COMPILE=arm-eabi-
+
+#============================================
+target=panda-torvalds-yocto-lto
+inherit_from=panda-torvalds
+
+TOOL_PATH=/a/home/tbird/work/yocto/tims-build/build/tmp/sysroots/x86_64-linux/usr/bin/armv7a-vfp-neon-poky-linux-gnueabi
+CROSS_COMPILE=arm-poky-linux-gnueabi-
+
+#============================================
+target=mydroid-emulator
+
+description="""Android emulator
+Virtual ARM processor: <details here>
+To set up for building the Android system, do: 'source build/envsetup.sh'
+   then, do: 'lunch'
+To get commands for sdk tools, do: 'source setup-android.env.sh'
+To get commands for kernel building, do: 'ttc mydroid-emulator setenv'
+"""
+
+TOOL_PATH=/a/home/tbird/work/mydroid-2012-05/prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin:/a/home/tbird/work/mydroid-2012-05/
+ARCH=arm
+CROSS_COMPILE=arm-eabi-
+kimage=zImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+
+KBUILD_OUTPUT=../build/mydroid-emulator
+kbuild_cmd=time make -j6 $kimage
+kinstall_cmd=cp $KBUILD_OUTPUT/arch/arm/boot/zImage $ANDROID_PRODUCT_OUT/kernel-qemu
+
+# the git checkout in the get_kernel_cmd is a bit weird.  The goldfish
+# repository is shipped with no log. (At least, it was on May 3, 2012.
+# you have to look at the git log message for
+# /prebuilts/qemu-kernel/arm/kernel-qemu-armv7 to see what tree to checkout.
+get_kernel_cmd="""git clone https://android.googlesource.com/kernel/goldfish.git $KERNEL_SRC
+	git checkout 46b05b2fc0594fd6db7ea88c1e9f02ec395c33a0
+"""
+
+get_config_cmd=make goldfish_armv7_defconfig
+
+# also: get_config_cmd=adb pull /proc/config.gz . ; zcat config.gz >$KBUILD_OUTPUT/.config
+
+copy_to_cmd=adb push $src $dest
+copy_from_cmd=adb pull $src $dest
+rm_cmd=adb shell rm $dest
+run_cmd=adb shell "$COMMAND"
+
+login_cmd=adb shell
+console_cmd=adb shell
+
+
+#============================================
+target=eagle
+
+description="""Eagle board (Sony Internet TV Blu-Ray product)
+Uses IntelAtom CPU CE4170 @ 1.60 GHz
+610K RAM, 8G sata SSD? drive, sata blu-ray disc"""
+
+ipaddr=43.135.148.85
+usb_port=USB2
+
+ADBHOST=%(ipaddr)s
+
+TOOL_PATH=/home/tbird/work/eagle/toolchains/DEV/build_i686/staging_dir/bin:/a/home/tbird/work/mydroid/out/host/linux-x86/bin
+ARCH=i386
+CROSS_COMPILE=i686-cm-linux-
+KERNEL_SRC=linux
+kimage=vmlinux.bin
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/eagle
+
+get_kernel_cmd="""mkdir $KERNEL_SRC
+	tar -C $KERNEL_SRC -xvf /home/tbird/work/eagle/sign-info/kernel2623-7.2.0.src.tgz"""
+
+get_config_cmd=make btv_defconfig
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/$kimage $KBUILD_OUTPUT/../sign-dir
+	echo -n "Go sign the kernel ($kimage) in ../build/sign-dir"
+	echo -n "and install it manually on the target"
+	cat $KBUILD_OUTPUT/../sign-dir/cheatsheet.txt
+"""
+	
+
+console_cmd=minicom -w %(usb_port)s-115k
+
+target_bin=/system/bin
+copy_to_cmd=adb push $src $dest
+copy_from_cmd=adb pull $src $dest
+rm_cmd=adb shell rm $dest
+login_cmd=adb shell
+run_cmd=adb shell "$COMMAND"
+reboot_cmd=powerswitch-cycle -n eagle -d 3 -o 4
+
+#============================================
+target=test1
+item=minicom %(real_board)s options
+
+target=test2
+real_board=test_board
+inherit_from=test1
+item2=foo2 %(item)s %% bar2
+item3=foo3 %(item2)s %PTR% bar3
+item4=foo4 %(item3)s %(item2)s %(item)s bar4
+recurse=foo %(recurse)s bar
+r1=1a %(r2)s 1z
+r2=2a %(r1)s 2z
+
+target=test3
+TOOL_PATH=/foo:/bar
+
+#============================================
+target=kzm-a9
+real_board=kzm-a9
+
+usb_port=USB0
+inherit_from=.config_defaults
+description="""Kyoto Microcomputer board
+??? MHZ Coretex-A9 dual-core processor
+???M RAM, ??K L1 cache, ???K L2 cache
+HVGA 640x480 touchscreen LCD, HDMI, USB host and gadget
+composite video, audio, ethernet
+"""
+
+usb_port=USB0
+ipaddr=192.168.2.92
+
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-gnueabi-armv7a-dev-
+kimage=uImage
+TOOL_PATH=/opt/CE-Linux-8.0.1.2/arm-sony-linux-gnueabi/cross/devel/bin:/opt/CE-Linux-8.0.1.2/${ARCH}/host/bin
+#get_kernel_cmd="""tar -xzvf /opt/CE-Linux-8.0.1.2/linux-2.6.29.y-BRANCH_SS-RT.git-DIST_20110311.tgz
+#	mv linux-2.6.29.y-BRANCH_SS-RT.git $KERNEL_SRC"""
+#get_kernel_cmd=git clone git+ssh://nserv.sm.sony.co.jp/export/git/linux-2.6.35.y-BRANCH_SS-RT.git $KERNEL_SRC
+#get_kernel_cmd=git clone /home/tbird/work/ss-35-rt $KERNEL_SRC
+#get_config_cmd=source ./setup-kzm-a9 ; make kzm-a9_defconfig ;  yes '' 2>/dev/null | make oldconfig
+get_config_cmd=/bin/bash ./setup-kzm-a9-smp
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/kzm-a9/boot/uImage
+	cp $KBUILD_OUTPUT/System.map /target/kzm-a9/boot/System.map"""
+
+#reset_cmd=telnet_exec -t %(real_board)s -u root -c "reboot"
+reset_cmd=powerswitch-cycle -n kzm-a9 -d 3 -o 1
+reboot_cmd=powerswitch-cycle -n kzm-a9 -d 3 -o 1
+
+console_cmd=minicom -w %(usb_port)s-115k
+run_cmd=telnet_exec -t %(real_board)s -u root -a 1 -c "$COMMAND"
+
+#============================================
+target=kzm-a9-android
+inherit_from=kzm-a9
+
+ADBHOST=%(ipaddr)s
+login_cmd=adb shell
+
+#============================================
+target=timdesk
+
+ipaddr=43.135.148.222
+
+KBUILD_OUTPUT=../build/%(target)s
+INSTALL_MOD_PATH=../modules/%(target)s
+KERNEL_SRC=linux
+TMPDIR=/tmp
+
+#kimage=vmlinuz
+kimage=bzImage
+kbuild_cmd=time make -j 10 %(kimage)s
+kernel_version=timlocal-1
+
+get_kernel_cmd=git clone /a/home/tbird/work/torvalds/linux-3 $KERNEL_SRC
+get_config_cmd=make localmodconfig
+
+kinstall_cmd=echo Should create kinstall_cmd in /etc/ttc.conf
+kinstall_cmd="""sudo cp -v arch/x86_64/boot/bzImage /boot/vmlinuz-%(kernel_version)s
+	sudo cp -v $KBUILD_OUTPUT/.config /boot/config-%(kernel_version)s
+	sudo cp -v $KBUILD_OUTPUT/System.map /boot/System.map-%(kernel_version)s
+"""
+
+#============================================
+target=stable-3.0
+get_kernel_cmd="""
+echo hello
+"""
+
+#============================================
+target=ltsi-3.0
+
+get_kernel_cmd="""get-ltsi-3.0.sh
+mv linux-stable $KERNEL_SRC
+"""

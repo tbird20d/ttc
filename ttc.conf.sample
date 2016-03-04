@@ -1,0 +1,204 @@
+# Some notes on syntax and conventions
+# Attributes that end in "_cmd" are assumed to be shell
+# commands, which will be executed in shell context
+# Each line of a multi-line _cmd will be executed
+# in its own sub-shell.  (i.e. don't count on 
+# exports or cd's being persistent from one line to 
+# the next)
+# 
+# The get_kernel_cmd should output the kernel source
+# to the directory specified by $KERNEL_SRC
+#
+#===========================================================
+target=innovator
+description="""TI OMAP Innovator board, with:
+OMAP1510 processor (ARM925T core and a C55x DSP)
+The ARM core runs at 168 MHZ.
+The board has 32 meg. of flash (in 2 16M banks) and
+32 meg. of SDRAM."""
+
+ipaddr=192.168.1.61
+login_cmd=telnet inno-1
+console_cmd=minicom inno
+
+TOOL_PATH=/usr/local/arm-sony-linux/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-
+kimage=uImage
+kbuild_cmd=make $kimage
+kinstall_cmd=cp -v arch/arm/boot/uImage /target/inno-1/boot
+reset_cmd=omap-reset
+get_kernel_cmd=export CVSRSH=/usr/bin/ssh ; cvs -d :ext:oak.sm.sony.co.jp:/var/cvsroot co -r branch_ALP_LINUX -d $KERNEL_SRC linux-2.6
+get_config_cmd="""export CVSRSH=/usr/bin/ssh ; cvs -d :ext:oak.sm.sony.co.jp:/var/cvsroot co local-dev/team/configs
+	cp local-dev/team/configs/config-innovator-baseline $KERNEL_SRC/.config"""
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/inno-1/$dest
+copy_from_cmd=cp /target/inno-1/$src $dest
+rm_cmd=rm /target/inno-1/$dest
+
+#===========================================================
+
+target=osk
+description="""TI OMAP Starter Kit (OSK):
+OMAP5912 processor (ARM926EJ-S core and a C55x DSP)
+The ARM core runs at 192 MHZ.
+The board has 32 meg. of flash and 32 meg. Mobile DDR SDRAM,
+10 Mbit Ethernet interface, USB Host interface
+and a AIC23 stereo codec."""
+
+ipaddr=192.168.1.72
+login_cmd=telnet osk2
+console_cmd=echo "console is on timdesk" ; false
+
+TOOL_PATH=/usr/local/arm-sony-linux/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-
+kimage=uImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/osk
+kbuild_cmd=make $kimage
+kinstall_cmd=cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/osk2/boot
+#reset_cmd=echo "remote reset not supported" ; false
+reset_cmd=echo "Please manually reset the OSK board, by pressing the white button on the board" ; sleep 10 ; true
+old_get_kernel_cmd=export CVSRSH=/usr/bin/ssh ; cvs -d :ext:oak.sm.sony.co.jp:/var/cvsroot co -r branch_ALP_LINUX -d $KERNEL_SRC linux-2.6
+get_kernel_cmd=tla get -A alp@oak--linux-1 alp-linux--dev-2-6-12 $KERNEL_SRC
+get_kernel_cmd2=tla get -A alp@oak--linux-1 alp-linux--dev-2-6-11 $KERNEL_SRC
+get_config_cmd=make alp_linux_osk_defconfig
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/osk2/$dest
+copy_from_cmd=cp /target/osk2/$src $dest
+rm_cmd=rm /target/osk2/$dest
+run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
+
+#===========================================================
+target=osk11
+description="""TI OMAP Starter Kit (OSK):
+OMAP5912 processor (ARM926EJ-S core and a C55x DSP)
+The ARM core runs at 192 MHZ.
+The board has 32 meg. of flash and 32 meg. Mobile DDR SDRAM,
+10 Mbit Ethernet interface, USB Host interface
+and a AIC23 stereo codec."""
+
+ipaddr=192.168.1.72
+login_cmd=telnet osk2
+console_cmd=echo "console is on timdesk" ; false
+
+TOOL_PATH=/usr/local/arm-sony-linux/devel/bin
+ARCH=arm
+CROSS_COMPILE=arm-sony-linux-
+kimage=uImage
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/osk11
+kbuild_cmd=make $kimage
+kinstall_cmd=cp -v $KBUILD_OUTPUT/arch/arm/boot/uImage /target/osk2/boot
+#reset_cmd=echo "remote reset not supported" ; false
+reset_cmd=echo "Please manually reset the OSK board, by pressing the white button on the board" ; sleep 10 ; true
+old_get_kernel_cmd=export CVSRSH=/usr/bin/ssh ; cvs -d :ext:oak.sm.sony.co.jp:/var/cvsroot co -r branch_ALP_LINUX -d $KERNEL_SRC linux-2.6
+get_kernel_cmd=tla get -A alp@oak--linux-1 alp-linux--dev-2-6-11 $KERNEL_SRC
+get_config_cmd=make alp_linux_osk_defconfig
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/osk2/$dest
+copy_from_cmd=cp /target/osk2/$src $dest
+rm_cmd=rm /target/osk2/$dest
+run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
+
+#===========================================================
+target=nut
+description="""Nut is an x86-based desktop computer, with:
+Intel Celeron processor, running at 2 GHz.
+The machine has 128 meg. of RAM and a 40G IDE hard drive."""
+
+reset_cmd=nut-reset
+console_cmd=minicom nut
+login_cmd=telnet nut
+ipaddr=192.168.1.14
+
+TOOL_PATH=
+ARCH=
+CROSS_COMPILE=
+INSTALL_PATH=/target/nut/boot
+KERNEL_SRC=linux
+KBUILD_OUTPUT=../build/nut
+
+kimage=bzImage
+kbuild_cmd=make $kimage
+kinstall_cmd=cp -v $KBUILD_OUTPUT/arch/i386/boot/bzImage /target/nut/boot/vmlinuz
+#kinstall_cmd=make INSTALL_PATH=$INSTALL_PATH install
+get_kernel_cmd="""tar -xjf /home/rbatest/base/linux-2.6.10.tar.bz2
+		mv linux-2.6.10 $KERNEL_SRC"""
+get_config_cmd=cp /home/rbatest/base/config-nut-works-2.6.11-rc4 $KBUILD_OUTPUT/.config
+
+copy_to_cmd=cp $src /target/nut/$dest
+copy_from_cmd=cp /target/nut/$src $dest
+rm_cmd=rm /target/nut/$dest
+
+#===========================================================
+target=ebony
+description="""Ebony (San Jose) is an IBM PowerPC development baord, with:
+PowerPC 440GP processor, running at 400? GHz.
+The machine has 128 meg. of RAM."""
+
+ipaddr=192.168.1.54
+reset_cmd=ebony-reset
+console_cmd=minicom -w ebony
+login_cmd=telnet ebony
+
+TOOL_PATH=/usr/local/powerpc-sony-linux/devel/bin
+ARCH=ppc
+CROSS_COMPILE=powerpc-sony-linux-
+TMPDIR=/tmp
+KERNEL_SRC=linux
+KBUILD_OUTPUT=../build/ebony
+kimage=zImage
+kbuild_cmd=make $kimage
+kinstall_cmd=cp -v $KBUILD_OUTPUT/arch/ppc/boot/images/zImage.ebony /target/ebony/boot
+
+get_kernel_cmd=tla get -A alp@oak--trial-5 alp-linux--dev $KERNEL_SRC
+#get_config_cmd="""export CVSRSH=/usr/bin/ssh ; cd $TMPDIR ; cvs -d :ext:oak.sm.sony.co.jp:/var/cvsroot co local-dev/team/configs/config-ebony-baseline ; cd -
+#	cp $TMPDIR/local-dev/team/configs/config-ebony-baseline $KBUILD_OUTPUT/.config"""
+
+get_config_cmd=make alp_linux_ebony_defconfig
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/ebony$dest
+copy_from_cmd=cp /target/ebony$src $dest
+rm_cmd=rm -f /target/ebony/$dest
+run_cmd=telnet_exec -t ebony -u root -c "$COMMAND"
+
+#===========================================================
+
+target=g5
+description=Macintosh G5
+
+TOOL_PATH=/opt/crosstool/ppc64/bin
+ARCH=ppc64
+CROSS_COMPILE=powerpc64-unknown-linux-gnu-
+#kimage=zImage
+kimage=zImage.vmode
+KERNEL_SRC=linux
+TMPDIR=/tmp
+KBUILD_OUTPUT=../build/g5
+kbuild_cmd=make $kimage
+kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/ppc64/boot/$kimage /target/g5/boot
+	cp $KBUILD_OUTPUT/System.map /target/g5/tmp"""
+reset_cmd=echo "Remote reset not supported" ; false
+get_kernel_cmd=tla get -A alp@oak--linux-1 alp-linux--dev-2-6-12 $KERNEL_SRC
+get_config_cmd=make alp_linux_g5_defconfig
+login_cmd=ssh root@g5
+
+target_bin=/devel/usr/bin
+copy_to_cmd=cp $src /target/g5/$dest
+copy_from_cmd=cp /target/g5/$src $dest
+rm_cmd=rm /target/g5/$dest
+run_cmd=telnet_exec -t g5 -u root -c "$COMMAND"
+
+
+#===========================================================
+target=test
+description=A test board (fictional), for testing the 'target' command.
+
+console_cmd=minicom something_funky

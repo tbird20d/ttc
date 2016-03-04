@@ -1,0 +1,49 @@
+#! /bin/sh
+#
+# powerswitch-cycle - program to control web power switch from digital loggers
+#
+# See http://www.digital-loggers.com/lpc.html
+#
+
+# define some defaults
+outlet=9
+name=outlet
+delay=5
+
+usage() {
+	echo "Usage: powerswitch-cycle [-h] [-n <name>] [-d <delay>] -o <outlet>"
+	echo 
+	echo "<outlet> is the number (1-8) of the electrical outlet to power-cycle."
+	echo "<name> is just used to print the name of the item connected to the outlet."
+	echo "<delay> specifies the time to wait, in seconds, between turning the"
+	echo "  outlet off and back on again.  The default delay is ${delay}." 
+	exit 1
+}
+
+if [ -z "$1" ] ; then
+	usage 
+fi
+
+while getopts "n:d:o:h" op ; do
+	case $op in
+		n) name=$OPTARG;;
+		d) delay=$OPTARG;;
+		o) outlet=$OPTARG;;
+		h) usage;;
+	esac
+done
+
+#shift $((OPTIND-1))
+#remaining_args=$@
+
+if [ "${outlet}" = "9" ] ; then
+	echo "Error: missing outlet number."
+	usage
+fi
+
+echo "Turning off ${name} power (outlet ${outlet})"
+wget --no-proxy -O /dev/null -q --auth-no-challenge http://admin:13zeebras@powerswitch/outlet?${outlet}=OFF
+sleep ${delay}
+echo "Turning on ${name} power"
+wget --no-proxy -O /dev/null -q --auth-no-challenge http://admin:13zeebras@powerswitch/outlet?${outlet}=ON
+
