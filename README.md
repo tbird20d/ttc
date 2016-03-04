@@ -22,10 +22,10 @@ Some helper scripts are provided:
  * config-sizes-test.py is a sample test program which shows how to use
      ttc to run a series of tests on a target machine.
 
-== Resources
+## Resources
 Online documentation is available at:
 http://elinux.org/Ttc_Program_Usage_Guide
 
-== Authorship
+## Authorship
 Author: 'ttc' was written by Tim Bird, <tim.bird (at) sonymobile.com>
 Copyright: (c) 2005-2016 Sony Corporation
