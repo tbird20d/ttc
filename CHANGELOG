@@ -1,0 +1,57 @@
+Version 1.3.0 - 2012-01-22
+ * Add on, off, pos, fsbuild
+
+Version 1.2.3 - 2012-12-12
+ * add error handling for macro expansion
+
+Version 1.2.2 - 2012-05-04
+ * add ADBHOST to list of environment variables set on setenv
+
+Version 1.2.1 - 2011-06-16
+ * flush stdout after ttc run, to avoid a python exception
+   when output is piped to a command which terminates.
+   e.g. ttc run dmesg | head
+
+Version 1.1.0 - 2011-04-18
+ * support multi-line shell fragments in exec_command
+
+Version 1.0.1 - 2011-01-11
+ * fix bug handling single-line triple-quoted blocks
+
+Version 1.0.0 - 2008-10-24
+ * rename LOCAL_TTC_CONF to TTC_CONF and support multiple config files
+
+Version 0.9.22 - Oct 23, 2008
+ * rename to 'ttc'
+
+Version 0.9.12 - 2008-08-13
+ * Remove spurious prints from set_config
+
+Version 0.9.11 - 2008-06-19
+ * Escape spaces in exported env vars for "setenv -o"
+   This is needed to handle CROSS_COMPILE=ccache arm-linux-
+
+Version 0.9.10 - 2008-06-05
+ * Fix macro expansion to ignore non-interpolation percents: %PTR%
+
+Version 0.9.9 - 2008-06-03
+ * Expand nested macros
+
+Version 0.9.8 - 2008-05-21
+ * Support expansion macros in attributes
+ * Also, support multi-value and multi-level inheritance
+ * Support hidden config blocks (starting with a dot)
+
+Version 0.9.7 - 2008-05-12
+ * Support inheritance using the inherit_from attribute
+
+Version 0.8.6 - Jan 31, 2007
+ * convert 'target' in help screens to 'tc'
+ * add global verbose option
+
+Version 0.8.5 - Jan 19, 2007
+ * rename to 'tc'
+
+Version 0.8.1
+ * eliminate extra leading line in telnet_exec
+ * add preset-test.py - sample test script 
