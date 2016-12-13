@@ -2,6 +2,8 @@
 #
 # target-test.py - python routine to test a target configuration under ttc
 #
+# Usage: target-test.py <target>
+#
 # To Do for target-test.py
 # * make sure that no existing env. vars are set to conflict with our target
 #
@@ -9,23 +11,24 @@
 #  * failure of telnet_exec (ttc run) is not handled properly:
 #
 # OUTLINE:
+# key: '-' means not implemented yet
 # 001 make sure the target is listed
 # 002 get target info and validate it
 # 003 make sure you can get the kernel source
 #   * report on the version of the kernel source
-# 004 make sure you can build the kernel
-# 005 make sure you can install the kernel
-# 006 make sure you can get the default kernel configuration
+# 004 make sure you can get the default kernel configuration
+# 005 make sure you can build the kernel
+# 006 make sure you can install the kernel and reboot
 # 007 make sure you can change the kernel configuration
-# 008 make sure you can reboot the board
-# 009 make sure that the board boots with the new kernel
+# 008 make sure you can reboot the target
+# - 009 make sure that the board boots with the new kernel
 #   * make sure that the running kernel is the one newly built
 # 010 make sure that you can copy a file to the target
 # 011 make sure that you can copy a file from the target
 # 012 make sure that you can execute a command on the target
-# 013 make sure that you can get an interactive console on the target
-# 014 make sure you can apply a patch to the kernel
-# 015 make sure you can compile a small program for the target
+# - 013 make sure that you can get an interactive console on the target
+# - 014 make sure you can apply a patch to the kernel
+# - 015 make sure you can compile a small program for the target
 #   * compile it, install it (with copy), and run it
 # 016 make sure you can change the kernel command line
 
