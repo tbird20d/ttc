@@ -1,0 +1,88 @@
+# Some notes on syntax and conventions
+# Attributes that end in "_cmd" are assumed to be shell
+# commands, which will be executed in shell context
+# Each line of a multi-line _cmd will be executed
+# in its own sub-shell.  (i.e. don't count on 
+# exports or cd's being persistent from one line to 
+# the next)
+# 
+# The get_kernel_cmd should output the kernel source
+# to the directory specified by $KERNEL_SRC
+#===========================================================
+
+target=bbb
+description="""beaglebone black mounted with breadboard on side
+The board is connected via ethernet to the netgear router (bird-N-ext).
+Also, a cdb_assist board is connected (use 'ttc console cdb_assist'
+for manual control of vbus).
+
+The 'ttc reboot' command boots a kernel, initrd and dtb at
+/boot/uboot/zImage, /boot/uboot/initrd.img, and
+  /boot/uboot/dtbs/am335x-boneblack.dtb
+"""
+
+ip_addr=10.0.1.74
+wifi_ip_addr=10.0.1.28
+usb_ip_addr=192.168.2.7
+
+KBUILD_OUTPUT=../kbuild/%(target)s
+
+#TOOL_PATH - is not needed because tools are in /us/bin
+# they were installed with apt-get install gcc-arm-linux-gnueabi
+CROSS_COMPILE=arm-linux-gnueabi-
+ARCH=arm
+kimage=zImage
+KERNEL_SRC=linux
+
+get_kernel_cmd="""
+git clone https://github.com/beagleboard/linux.git $KERNEL_SRC
+echo kernel is in $KERNEL_SRC
+"""
+
+get_config_cmd=make bb.org_defconfig
+
+kbuild_cmd="""make %(kimage)s modules
+make dtbs
+"""
+
+kinstall_cmd="""echo kinstall_cmd not implemented yet!
+echo Reboot into safe kernel...
+echo v >/dev/ttyACM0
+echo Waiting 60 seconds
+for i in $(seq 60) ; do sleep 1; echo -n "$i." ; done
+echo V >/dev/ttyACM0
+echo Copying dtb and kernel to board:/boot/uboot
+ttc cp $KBUILD_OUTPUT/arch/arm/boot/dts/am335x-boneblack.dtb target:/boot/uboot/dtbs/test.dtb
+ttc cp $KBUILD_OUTPUT/arch/arm/boot/zImage target:/boot/uboot/zImage.test
+"""
+
+login_cmd=ssh root@%(ip_addr)s
+
+console_cmd=minicom -w -o -D /dev/ttyACM1
+
+reset_cmd="""echo I should set up one of the switches on the cdb assist to
+echo the reset button on the board.  For now just do a reboot.
+# echo A >/dev/ttyACM0
+# sleep 3
+# echo a >/dev/ttyACM0
+echo v >/dev/ttyACM0
+sleep 3 
+echo V >/dev/ttyACM0
+"""
+
+# do a power cycle, to whatever the default kernel is for the board
+reboot_cmd="""
+echo v >/dev/ttyACM0
+sleep 3
+echo V >/dev/ttyACM0
+"""
+
+run_cmd=ssh -o "StrictHostKeyChecking no" -l root %(ip_addr)s "$COMMAND" 2>/dev/null
+copy_to_cmd=scp $src root@%(ip_addr)s:/$dest
+copy_from_cmd=scp root@%(ip_addr)s:/$src $dest
+rm_cmd=ttc run "rm $dest"
+
+#===========================================================
+target=sony_debug
+console_cmd=minicom -w -o -D /dev/ttyACM0
+
