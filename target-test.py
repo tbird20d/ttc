@@ -117,7 +117,7 @@ def test_002(test_run):
 
 	# check that the kernel name is one of the 'normal' values
 	test_run.result_out("kernel image name is '%s'" % kimage)
-	if result not in ["vmlinux", "vmlinuz", "bzImage", "uImage", "cuImage.sequoia"]:
+	if result not in ["vmlinux", "vmlinuz", "bzImage", "uImage", "cuImage.sequoia", "zImage"]:
 		test_run.failure("Kernel image name is unexpected")
 	else:
 		test_run.success("Kernel image name is OK")
