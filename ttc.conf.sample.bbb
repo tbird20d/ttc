@@ -81,8 +81,8 @@ echo V >/dev/ttyACM0
 """
 
 run_cmd=ssh -o "StrictHostKeyChecking no" -l root %(ip_addr)s "$COMMAND" 2>/dev/null
-copy_to_cmd=scp $src root@%(ip_addr)s:/$dest
-copy_from_cmd=scp root@%(ip_addr)s:/$src $dest
+copy_to_cmd=scp $copy_args $src root@%(ip_addr)s:/$dest
+copy_from_cmd=scp $copy_args root@%(ip_addr)s:/$src $dest
 rm_cmd=ttc run "rm $dest"
 
 #===========================================================

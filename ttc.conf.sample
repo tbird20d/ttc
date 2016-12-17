@@ -33,8 +33,8 @@ get_config_cmd="""export CVSRSH=/usr/bin/ssh ; cvs -d :ext:oak.sm.sony.co.jp:/va
 	cp local-dev/team/configs/config-innovator-baseline $KERNEL_SRC/.config"""
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/inno-1/$dest
-copy_from_cmd=cp /target/inno-1/$src $dest
+copy_to_cmd=cp $copy_args $copy_args $src /target/inno-1/$dest
+copy_from_cmd=cp $copy_args $copy_args /target/inno-1/$src $dest
 rm_cmd=rm /target/inno-1/$dest
 
 #===========================================================
@@ -68,8 +68,8 @@ get_kernel_cmd2=tla get -A alp@oak--linux-1 alp-linux--dev-2-6-11 $KERNEL_SRC
 get_config_cmd=make alp_linux_osk_defconfig
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/osk2/$dest
-copy_from_cmd=cp /target/osk2/$src $dest
+copy_to_cmd=cp $copy_args $src /target/osk2/$dest
+copy_from_cmd=cp $copy_args /target/osk2/$src $dest
 rm_cmd=rm /target/osk2/$dest
 run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
 
@@ -102,8 +102,8 @@ get_kernel_cmd=tla get -A alp@oak--linux-1 alp-linux--dev-2-6-11 $KERNEL_SRC
 get_config_cmd=make alp_linux_osk_defconfig
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/osk2/$dest
-copy_from_cmd=cp /target/osk2/$src $dest
+copy_to_cmd=cp $copy_args $src /target/osk2/$dest
+copy_from_cmd=cp $copy_args /target/osk2/$src $dest
 rm_cmd=rm /target/osk2/$dest
 run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
 
@@ -133,8 +133,8 @@ get_kernel_cmd="""tar -xjf /home/rbatest/base/linux-2.6.10.tar.bz2
 		mv linux-2.6.10 $KERNEL_SRC"""
 get_config_cmd=cp /home/rbatest/base/config-nut-works-2.6.11-rc4 $KBUILD_OUTPUT/.config
 
-copy_to_cmd=cp $src /target/nut/$dest
-copy_from_cmd=cp /target/nut/$src $dest
+copy_to_cmd=cp $copy_args $src /target/nut/$dest
+copy_from_cmd=cp $copy_args /target/nut/$src $dest
 rm_cmd=rm /target/nut/$dest
 
 #===========================================================
@@ -164,8 +164,8 @@ get_kernel_cmd=tla get -A alp@oak--trial-5 alp-linux--dev $KERNEL_SRC
 
 get_config_cmd=make alp_linux_ebony_defconfig
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/ebony$dest
-copy_from_cmd=cp /target/ebony$src $dest
+copy_to_cmd=cp $copy_args $src /target/ebony$dest
+copy_from_cmd=cp $copy_args /target/ebony$src $dest
 rm_cmd=rm -f /target/ebony/$dest
 run_cmd=telnet_exec -t ebony -u root -c "$COMMAND"
 
@@ -191,8 +191,8 @@ get_config_cmd=make alp_linux_g5_defconfig
 login_cmd=ssh root@g5
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/g5/$dest
-copy_from_cmd=cp /target/g5/$src $dest
+copy_to_cmd=cp $copy_args $src /target/g5/$dest
+copy_from_cmd=cp $copy_args /target/g5/$src $dest
 rm_cmd=rm /target/g5/$dest
 run_cmd=telnet_exec -t g5 -u root -c "$COMMAND"
 
