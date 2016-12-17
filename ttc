@@ -23,6 +23,8 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  1.3.4  - support leading '-r' in copy commands, and pass it to
+#           sub-command in 'copy_args' environment variable
 #  1.3.3  - add -c command, support TTC_SYSLOG, handle missing /dev/log
 #  1.3.2  - allow whitespace preceding comment char: #
 #  1.3.1  - change author e-mail to sonymobile.com
@@ -53,7 +55,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,3,3)
+VERSION = (1,3,4)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -726,8 +728,14 @@ def do_copy(tmap, objects):
 
 	# we don't support host-to-host copies or target-to-target copies
 
-
 	# FIXTHIS - need to handle invalid number of arguments in do_copy
+
+	# if '-r' is specified, put it in 'copy_args' for sub-command:
+	if objects[0] == '-r':
+		os.environ["copy_args"] = "-r"
+		del(objects[0])
+	else:
+		os.environ["copy_args"] = " "
 
 	# find out direction of copy from the last argument
 	(tspec, path) = split_filepath(objects[-1])
@@ -743,18 +751,18 @@ def do_copy(tmap, objects):
 			error_out("Invalid target '%s' specified in dest path." % tspec, 6)
 
 		# copy each file individually
-		for file in objects[:-1]:
-			os.environ["src"] = file
+		for src in objects[:-1]:
+			os.environ["src"] = src
 			os.environ["dest"] = dest
 			exec_command(tmap, "copy_to")
 
 	else:	# no tspec in destination, direction is *from* target
 		dest = path
 		for file in objects[:-1]:
-			(tspec, path) = split_filepath(file)
+			(tspec, src) = split_filepath(file)
 			if tspec != "target":
 				error_out("Invalid target '%s' specified in src path." % tspec, 6)
-			os.environ["src"] = path
+			os.environ["src"] = src
 			os.environ["dest"] = dest
 			exec_command(tmap, "copy_from")
 	sys.exit(0)

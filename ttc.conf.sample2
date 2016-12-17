@@ -19,8 +19,8 @@ get_kernel_cmd=git clone nserv.sm.sony.co.jp:/export/git/linux-3.0.y-BRANCH_SS-R
 kbuild_cmd=time make -j 8 %(kimage)s
 login_cmd=telnet %(real_board)s
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/%(real_board)s/$dest
-copy_from_cmd=cp /target/%(real_board)s/$src $dest
+copy_to_cmd=cp $copy_args $src /target/%(real_board)s/$dest
+copy_from_cmd=cp $copy_args /target/%(real_board)s/$src $dest
 rm_cmd=rm /target/%(real_board)s/$dest
 run_cmd=telnet_exec -t %(real_board)s -u root -c "$COMMAND"
 reset_cmd=telnet_exec -t %(real_board)s -u root -c "reboot"
@@ -126,8 +126,8 @@ get_kernel_cmd=tla get -A alp@oak--linux-3 alp-linux--dev-3--3.1 $KERNEL_SRC
 get_config_cmd=make alp_linux_osk_defconfig
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/osk2/$dest
-copy_from_cmd=cp /target/osk2/$src $dest
+copy_to_cmd=cp $copy_args $src /target/osk2/$dest
+copy_from_cmd=cp $copy_args /target/osk2/$src $dest
 rm_cmd=rm /target/osk2/$dest
 run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
 
@@ -166,8 +166,8 @@ get_kernel_cmd=tla get -A alp@oak--linux-3 alp-linux--dev-3--3.1 $KERNEL_SRC
 get_config_cmd=make alp_linux_osk_defconfig
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/osk2/$dest
-copy_from_cmd=cp /target/osk2/$src $dest
+copy_to_cmd=cp $copy_args $src /target/osk2/$dest
+copy_from_cmd=cp $copy_args /target/osk2/$src $dest
 rm_cmd=rm /target/osk2/$dest
 run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
 
@@ -204,8 +204,8 @@ get_kernel_cmd=tla get -A alp@oak--linux-2 alp-linux--dev-2-6-11--1.15 $KERNEL_S
 get_config_cmd=make alp_linux_osk_defconfig
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/osk2/$dest
-copy_from_cmd=cp /target/osk2/$src $dest
+copy_to_cmd=cp $copy_args $src /target/osk2/$dest
+copy_from_cmd=cp $copy_args /target/osk2/$src $dest
 rm_cmd=rm /target/osk2/$dest
 run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
 
@@ -407,8 +407,8 @@ kinstall_cmd="""cp -v $KBUILD_OUTPUT/arch/i386/boot/bzImage /target/nut/boot/vml
 get_kernel_cmd=tla get -A alp@oak--linux-2 alp-linux--dev-2 $KERNEL_SRC
 get_config_cmd=make alp_linux_pc_defconfig
 
-copy_to_cmd=cp $src /target/nut/$dest
-copy_from_cmd=cp /target/nut/$src $dest
+copy_to_cmd=cp $copy_args $src /target/nut/$dest
+copy_from_cmd=cp $copy_args /target/nut/$src $dest
 rm_cmd=rm /target/nut/$dest
 run_cmd=telnet_exec -t nut -u root -c "$COMMAND"
 
@@ -440,8 +440,8 @@ get_kernel_cmd=tla get -A alp@oak--linux-2 alp-linux--dev-2 $KERNEL_SRC
 
 get_config_cmd=make alp_linux_ebony_defconfig
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/ebony$dest
-copy_from_cmd=cp /target/ebony$src $dest
+copy_to_cmd=cp $copy_args $src /target/ebony$dest
+copy_from_cmd=cp $copy_args /target/ebony$src $dest
 rm_cmd=rm -f /target/ebony/$dest
 run_cmd=telnet_exec -t ebony -u root -c "$COMMAND"
 
@@ -466,8 +466,8 @@ get_config_cmd=make alp_linux_g5_defconfig
 login_cmd=echo root password is \"r\" ; ssh root@g5
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/g5/$dest
-copy_from_cmd=cp /target/g5/$src $dest
+copy_to_cmd=cp $copy_args $src /target/g5/$dest
+copy_from_cmd=cp $copy_args /target/g5/$src $dest
 rm_cmd=rm /target/g5/$dest
 run_cmd=telnet_exec -t g5 -u root -c "$COMMAND"
 #===========================================================
@@ -503,8 +503,8 @@ console_cmd=minicom -w tx49
 login_cmd=telnet tx49
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/tx49/$dest
-copy_from_cmd=cp /target/tx49/$src $dest
+copy_to_cmd=cp $copy_args $src /target/tx49/$dest
+copy_from_cmd=cp $copy_args /target/tx49/$src $dest
 rm_cmd=rm /target/tx49/$dest
 run_cmd=telnet_exec -t tx49 -u root -c "$COMMAND"
 
@@ -543,8 +543,8 @@ get_kernel_cmd=tla get -A alp@oak--linux-3 alp-linux--dev-3 $KERNEL_SRC
 get_config_cmd=make alp_linux_osk_defconfig
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/osk2/$dest
-copy_from_cmd=cp /target/osk2/$src $dest
+copy_to_cmd=cp $copy_args $src /target/osk2/$dest
+copy_from_cmd=cp $copy_args /target/osk2/$src $dest
 rm_cmd=rm /target/osk2/$dest
 run_cmd=telnet_exec -t osk2 -u root -c "$COMMAND"
 
@@ -577,8 +577,8 @@ get_kernel_cmd=tla get -A alp@oak--linux-3 alp-linux--dev-3--3.1 $KERNEL_SRC
 get_config_cmd=make kzm-arm11_defconfig
 
 target_bin=/devel/usr/bin
-copy_to_cmd=cp $src /target/kzm/$dest
-copy_from_cmd=cp /target/kzm/$src $dest
+copy_to_cmd=cp $copy_args $src /target/kzm/$dest
+copy_from_cmd=cp $copy_args /target/kzm/$src $dest
 rm_cmd=rm /target/kzm/$dest
 run_cmd=telnet_exec -t kzm -u root -c "$COMMAND"
 
@@ -610,8 +610,8 @@ get_kernel_cmd=cp -a /home/tbird/work/tvoa/ATI08 $KERNEL_SRC
 get_config_cmd=cp /home/tbird/work/tvoa/ATI08/.config $KBUILD_OUTPUT/.config 
 
 target_bin=/usr/bin
-copy_to_cmd=cp $src /nfsroot_gtx/$dest
-copy_from_cmd=cp /nfsroot_gtx/$src $dest
+copy_to_cmd=cp $copy_args $src /nfsroot_gtx/$dest
+copy_from_cmd=cp $copy_args /nfsroot_gtx/$src $dest
 rm_cmd=rm /nfsroot_gtx/$dest
 run_cmd=telnet_exec -t ati -u root -c "$COMMAND"
 
@@ -644,8 +644,8 @@ get_config_cmd="""cp -v arch/mips/configs/x260_nfs_bringup $KBUILD_OUTPUT/.confi
 	 chmod a+w $KBUILD_OUTPUT/.config"""
 
 target_bin=/usr/bin
-copy_to_cmd=cp $src /nfsroot_gtx/$dest
-copy_from_cmd=cp /nfsroot_gtx/$src $dest
+copy_to_cmd=cp $copy_args $src /nfsroot_gtx/$dest
+copy_from_cmd=cp $copy_args /nfsroot_gtx/$src $dest
 rm_cmd=rm /nfsroot_gtx/$dest
 run_cmd=telnet_exec -t mario -u root -c "$COMMAND"
 
