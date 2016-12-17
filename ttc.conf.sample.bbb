@@ -39,7 +39,10 @@ git clone https://github.com/beagleboard/linux.git $KERNEL_SRC
 echo kernel is in $KERNEL_SRC
 """
 
-get_config_cmd=make bb.org_defconfig
+get_config_cmd="""make bb.org_defconfig
+ttc set_config CONFIG_CC_STACKPROTECTOR_STRONG=n
+make olddefconfig
+"""
 
 kbuild_cmd="""make %(kimage)s modules
 make dtbs
