@@ -1,0 +1,26 @@
+# file: ttc
+# ttc parameter completion
+
+_ttc ()
+{
+  local cmd="${1##*/}"
+  local word=${COMP_WORDS[COMP_CWORD]}
+  local line=${COMP_LINE}
+  local tlist=( $(ttc list -q) )
+  local result
+
+  COMPREPLY=( $( compgen -W '-h -v -q -c --help console cp fsbuild \
+get_config get_kernel help info kbuild kinstall list login off on \
+pos reboot release reserve reset rm run set_config setenv status \
+vars version wait_for' -- $word ) );
+
+  # if sub-command is already expanded, show sub-options for each command
+  case "$line" in
+    *console*|*info*|*kbuild*)
+    	COMPREPLY=$tlist;;
+  esac
+
+  return 0
+}
+
+complete -F _ttc ttc
