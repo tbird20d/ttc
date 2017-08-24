@@ -5,7 +5,7 @@
 # Don't let anyone tell you that 'ttc' stands for "Tim's Target Control"
 # It's just not true.
 #
-# Copyright 2005-2016 Sony Corporation
+# Copyright 2005-2017 Sony Corporation
 #
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of version 2 of the GNU General Public License as
@@ -17,12 +17,14 @@
 #   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #   GNU General Public License for more details.
 #
-# Author: Tim Bird  <tim.bird (at) sonymobile.com>
+# Author: Tim Bird  <tim.bird (at) sony.com>
 #
 # To Do:
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  1.4.0  - pass multiple args to run command (everything following 'run' in
+#           command line).  Also, remove trailing whitespace from some lines.
 #  1.3.4  - support leading '-r' in copy commands, and pass it to
 #           sub-command in 'copy_args' environment variable
 #  1.3.3  - add -c command, support TTC_SYSLOG, handle missing /dev/log
@@ -55,7 +57,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,3,4)
+VERSION = (1,4,0)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -82,7 +84,7 @@ local_conf = ""
 LOG_ENV_VAR="TTC_SYSLOG"
 
 # format for command_help mapping with: key=name, value=(summary, long description)
-# if 
+# if
 command_help = {
 "cp":("Copy files to or from the target.",
 	"""Usage: ttc [<target>] cp <src> [<src2> ...] <dest>
@@ -102,8 +104,8 @@ command_help = {
   additional information. This is suitable for piping to other commands."""),
 
 "info":("Show information about a target.",
-	"""Usage: ttc [<target>] info [-v] [-n <attr>]	
-  Show information about a target.  The '-v' (verbose) option will show all the 
+	"""Usage: ttc [<target>] info [-v] [-n <attr>]
+  Show information about a target.  The '-v' (verbose) option will show all the
   attributes for the target (from the configuration file).  Use the '-n' option
   to display the value of a single attribute, <attr>."""),
 
@@ -307,7 +309,7 @@ def error_out(message, rcode):
 # ttc configuration (ttc.conf) file syntax:
 # ------------------------
 # empty lines and lines starting with # are ignored
-# target blocks begin with "target=<name>" and end when the 
+# target blocks begin with "target=<name>" and end when the
 #   next target block is encountered.
 # single-line attributes are:
 # name=value
@@ -367,7 +369,7 @@ def read_config(config_path):
 		if line.find("=")==-1:
 			print_error("Syntax error in target info file %s: Expected '=' at line %d:\n%s" % (info_file, line_no, line))
 			continue
-		
+
 		(name, value) = line.split('=', 1)
 		name = name.strip()
 		value = value.strip()
@@ -391,7 +393,7 @@ def read_config(config_path):
 	# check to see if any attributes are "homeless"
 	if targets.has_key("not found"):
 		print_error("Some attributes found outside of target blocks in file %s" % info_file)
-		
+
 	#print "targets=", targets
 	return targets
 
@@ -524,7 +526,7 @@ def exec_command(tmap, command, use_system=1):
 def do_status(tmap):
 	target = tmap["target"]
 
-	print "Status for target: %s" % target 
+	print "Status for target: %s" % target
 
 	# show who is currently using target
 	res = get_reservation(tmap)
@@ -533,8 +535,8 @@ def do_status(tmap):
 		print "Reservation began at: %s" % res[1]
 	else:
 		print "Target board is not reserved."
-		
-	
+
+
 	# FIXTHIS - should report:
 	#	target power-on status
 	#	whether target is running linux (pingable?)
@@ -551,7 +553,7 @@ def do_status(tmap):
 #
 # This means that effectively, target commands don't "nest" if
 # a different target is specified.  This is because the target.conf
-# values for a new target would not override the values in the 
+# values for a new target would not override the values in the
 # sub-shell environment of the first target.
 # (i.e. bad things will happen if you do: "target setenv osk", then
 #   "target ebony getkernel ; make $kimage" )
@@ -607,7 +609,7 @@ def do_setenv(tmap, options=[]):
 	# you probably shouldn't do something persistent here
 	if tmap.has_key("setenv_cmd"):
 		exec_command(tmap, "setenv", 1)
-	
+
 	if "-s" in options:
 		# start a new shell with the modified environment
 		# FIXTHIS - add TTC to prompt
@@ -673,7 +675,7 @@ def set_config_value_in_file(cfile, op, config, value):
 	out.close()
 	# rename doesn't work across distinct file systems
 	shutil.move(tmpfile, cfile)
-	
+
 def do_set_config(tmap, kernel_dir, kopts):
 	# kopt should be a list of option specs, separated by semi-colons
 	# eg. CONFIG_FOO=y CONFIG_BAR=n CONFIG_BAZ=1235 CONFIG_STR+=" quiet"
@@ -790,14 +792,14 @@ def do_rm(tmap, objects):
 		os.environ["dest"] = dest
 		exec_command(tmap, "rm")
 		sys.exit(0)
-		
+
 
 def do_wait_for(tmap, options):
 	import time
 
 	interval = 5
 	# 99999 seconds is a little over 27 hours
-	timeout = 99999	
+	timeout = 99999
 	if '-i' in options:
 		interval = int(options[options.index('-i')+1])
 		options.remove('-i')
@@ -845,7 +847,7 @@ def get_reservation(tmap):
 def check_reservation(tmap, command):
 	target = tmap["target"]
 	res = get_reservation(tmap)
-	
+
 	# if there's a reservation, and it's not mine, error out
 	if res[0] and not res[0]==os.environ["USER"]:
 		print "Error: Can't perform command '%s'" % command
@@ -869,7 +871,7 @@ def do_reserve(tmap, options):
 		real_board = target
 	USER=os.environ["USER"]
 	start_time=time.strftime("%Y-%m-%d_%H:%M:%S")
-	
+
 	# handle -f (force) option
 	force = 0
 	if "-f" in options:
@@ -956,7 +958,7 @@ def do_log_init():
 	# should check TTC_SYSLOG, and use filename from that
 	# maybe rename it to TTC_LOG instead (see LOG_ENV_VAR)
 
-# overall, this information is pretty dang useless 
+# overall, this information is pretty dang useless
 def do_log(command, tmap, options):
 	if logger:
 		target = tmap["target"]
@@ -1001,7 +1003,7 @@ def main():
 		if targets[tname].has_key("target_alias"):
 			talias = targets[tname]["target_alias"]
 			target_alias[talias] = tname
-			
+
 
 	# perform inheritance, if specified
 	# example of simple inheritance:
@@ -1009,7 +1011,7 @@ def main():
 	# inherit_from=osk
 	# CROSS_COMPILE=ccache arm-sony-linux-gnueabi-
 	#
-	
+
 	# do this multiple times, to catch nested inherit_froms
 	# keep going until no changes are made in any attributes
 	# (this implements a transitive closure)
@@ -1073,7 +1075,7 @@ def main():
 				options.append(arg)
 			else:
 				# normal "ttc <command>" case
-			
+
 				command = arg
 			continue
 		if arg in target_list:
@@ -1119,9 +1121,9 @@ def main():
 
 	# ex: target=my_board
 	# copy_to_cmd=cp $src /target/%(foo)s/$dest
-	# note difference between internally expanded macros %(var)s, and 
+	# note difference between internally expanded macros %(var)s, and
 	# externally expanded shell environment variables $var
-	
+
 	def expand_macros(str, d):
 		new_str = str
 		cpat=re.compile(r"%[(]\w*?[)]s")
@@ -1184,7 +1186,7 @@ def main():
 			except:
 				reset_delay = 30
 			print "Waiting %d seconds for target board to reset..." % reset_delay
-			time.sleep(reset_delay)	
+			time.sleep(reset_delay)
 		sys.exit(0)
 
 	if command=="console" or command=="login":
@@ -1192,7 +1194,7 @@ def main():
 		sys.exit(0)
 
 	if command=="setenv":
-		# if user is not outputing an export list, user gets a sub-shell 
+		# if user is not outputing an export list, user gets a sub-shell
 		if "-o" not in options:
 			options.append("-s")
 		do_setenv(tmap, options)
@@ -1204,12 +1206,12 @@ def main():
 			# FIXTHIS - this arg parsing is not robust
 			outdir = options[options.index("-o")+1]
 			os.environ["KERNEL_SRC"] = outdir
-				
+
 		exec_command(tmap, command)
 		sys.exit(0)
 
 	if command=="run":
-		os.environ["COMMAND"] = options[0]
+		os.environ["COMMAND"] = " ".join(options)
 		exec_command(tmap, command)
 		sys.exit(0)
 
@@ -1230,12 +1232,12 @@ def main():
 				cmd = "install -d %s" % outdir
 				(rcode, result) = commands.getstatusoutput(cmd)
 				if rcode:
-					print 
+					print
 					print "Error: Could not create build output directory '%s'" % outdir
 					print "Result='%s'" % result
 				else:
 					print "OK"
-				
+
 		exec_command(tmap, command)
 		sys.exit(0)
 
@@ -1263,7 +1265,7 @@ def main():
 
 	if command=="wait_for":
 		do_wait_for(tmap, options)
-		
+
 
 if __name__=="__main__":
 	main()
