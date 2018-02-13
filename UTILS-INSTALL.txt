@@ -1,0 +1,54 @@
+ttc is structured to be a thin wrapper on external programs used
+to manage and control a board.
+
+This document has information about external programs used by Tim Bird
+in his board farm:
+
+== remote execution commands ==
+These commands were written by Tim Bird, and support remote execution
+of commands on a target board, even when a password is required.
+That is, they support specifying the user namd and password for the
+operation.  ssh_exec uses the python expect module (pexpect)
+and telnet_exec uses the python telnet library.
+
+ * telnet_exec - perform remote command over telnet
+ * ssh_exec - perform remote command over ssh
+
+To install these, place them in /usr/local/bin and make sure
+they are executable:
+ $ sudo chmod a+x /usr/local/bin/telnet_exec
+ $ sudo chmod a+x /usr/local/bin/ssh_exec
+
+== powerswitch programs ==
+The 'powerswitch' programs are simple programs that use wget
+to manipulate a Digital Loggers web powerswitch product.
+These programs are included in the 'ttc' distribution.
+
+ * powerswitch-set - set the power of an outlet to either ON or OFF
+ * powerswitch-cycle - turn the power of an outlet OFF and back ON again
+
+To install these, place them in /usr/local/bin and make sure
+they are executable:
+ $ sudo chmod a+x /usr/local/bin/powerswitch-*
+
+== dlipower =
+dlipower is a python module and command line tool for working
+with Digital Loggers web powerswitch products.
+
+dlipower - obtained from:
+  https://github.com/dwighthubbard/python-dlipower.git
+
+installed with:
+ * python setup.py install
+
+The dlipower.py becomes available.
+(see /usr/local/lib/python2.7/dist-packiages/dlipower-0.7.165-py2.7.egg)
+
+The dlipower command line tool is put in /usr/local/bin
+
+To use:
+ * $ dlipower  - show status of all outlets
+ * $ dlipower status 1 - show status of outlet 1
+ * $ dlipower on 1 - turn on outlet 1
+ * $ dlipower off 3 - turn off outlet 3
+ * $ dlipower --help - show usage help
