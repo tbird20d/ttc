@@ -287,13 +287,6 @@ command is one of:
 
 	sys.exit(rcode)
 
-class map_class:
-	def __init__(self, map):
-		self.map = map
-	def __getattr__(self, attr):
-		if self.map.has_key(attr):
-			return self.map[attr]
-
 def print_error(message):
 	sys.stderr.write("Error: "+message+"\n")
 	sys.stderr.flush()
