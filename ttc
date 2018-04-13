@@ -67,7 +67,6 @@ rfile_fmt = "%s/%s.res"
 
 quiet = 0
 verbose = 0
-use_statusouput = 0
 
 # keep configuration file in /etc
 config_dir = "/etc"
