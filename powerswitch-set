@@ -1,0 +1,65 @@
+#! /bin/sh
+#
+# powerswitch-set - program to control web power switch from digital loggers
+#
+# Copyright (C) 2004 Sony Corporation
+# Author: Tim Bird
+#
+# SPDX-License-Identifier: MIT
+#
+# See http://www.digital-loggers.com/lpc.html
+#
+# Customize this script with the following variables:
+#
+USER=admin
+PASSWORD=1234
+
+# use a domain name, or an IP address
+# on my domain, 'powerswitch' is in my /etc/hosts file
+NET_ADDR=powerswitch
+
+# define some defaults
+outlet=9
+name=outlet
+
+usage() {
+	echo "Usage: powerswitch-set [-h] [-n <name>] -o <outlet> [on|off]"
+	echo 
+	echo "<outlet> is the number (1-8) of the electrical outlet to power-cycle."
+	echo "<name> is just used to print the name of the item connected to the outlet."
+	echo "on or off specifies whether to turn the outlet on or off"
+	exit 1
+}
+
+if [ -z "$1" ] ; then
+	usage 
+fi
+
+while getopts "n:o:h" op ; do
+	case $op in
+		n) name=$OPTARG;;
+		o) outlet=$OPTARG;;
+		h) usage;;
+	esac
+done
+
+shift $((OPTIND-1))
+on_off=$@
+
+if [ "${outlet}" = "9" ] ; then
+	echo "Error: missing outlet number."
+	usage
+fi
+
+if [ "${on_off}" = "on" ] ; then
+	setting="ON"
+elif [ "${on_off}" = "off" ] ; then
+	setting="OFF"
+else
+	echo "Error: missing or invalid on/off setting."
+	echo "on_off=$on_off"
+	usage
+fi
+
+echo "Turning ${on_off} ${name} power (outlet ${outlet})"
+wget --no-proxy -O /dev/null -q --auth-no-challenge http://${USER}:${PASSWORD}@${NET_ADDR}/outlet?${outlet}=${setting}
