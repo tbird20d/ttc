@@ -146,33 +146,35 @@ Here is the list of sub-commands available for user with the
 
 | Command   | Operation                                            | Notes |
 | --------- | ---------------------------------------------------- | ----- |
-| console   | Run a program to access the target console.          | |
-| cp        | Copy files to or from the target.                              ||.
-| fsbuild   | File system build                                              ||.
-| fsinstall | File system install                                            ||.
-| get_config| Install kernel config for target in the $KBUILD_OUTPUT directory||assumes the current directory is top kernel source dir.
-| get_kernel| Install kernel sources for target in the $KERNEL_SRC directory ||.
-| help      | Show this online help.                                         ||.
-| info      | Show information about a target.                               ||.
-| kbuild    | Build kernel from source.                                      ||assumes the current directory is the top kernel source dir.
-| kinstall  | Install kernel for use on target.                              ||assumes the current directory is the top kernel source dir.
-| list      | Show a list of available targets.                              ||.
-| login     | Run a program to perform a network login on the target.        ||.
-| off       | Turn target off                                                ||.
-| on        | Turn target on                                                 ||.
-| pos       | Show power status of target                                    ||.
-| reboot    | Reboot (power on and off) target board.                        ||.
-| release   | Release a reservation of a target.                             ||.
-| reserve   | Reserve a target for use.                                      ||.
-| reset     | Reset target board.                                            ||.
-| rm        | Remove files from the target.                                  ||.
-| run       | Run a command on the target, collecting it's output            ||.
-| set_config | Set an individual config option                                ||assumes the current directory is top kernel source dir
-| setenv    | Starts shell with environment for performing build and other operations||.
-| status    | Show status of target, including reservations.                 ||not implemented yet (currently only shows reservation, but not board status)
-| vars      | Show information about environment vars used by 'ttc'          ||.
-| version   | Show version information and exit.                             ||.
-| wait_for  | Wait for a condition to be true.                               ||command is executed on host (not on the target)
+| console   | Run a program to access the target console.          |
+
+
+| cp        | Copy files to or from the target.                              |
+| fsbuild   | File system build                                              |
+| fsinstall | File system install                                            |
+| get_config| Install kernel config for target in the $KBUILD_OUTPUT directory | assumes the current directory is top kernel source dir.
+| get_kernel| Install kernel sources for target in the $KERNEL_SRC directory |
+| help      | Show this online help.                                         |
+| info      | Show information about a target.                               |
+| kbuild    | Build kernel from source.                                      | assumes the current directory is the top kernel source dir.
+| kinstall  | Install kernel for use on target.                              | assumes the current directory is the top kernel source dir.
+| list      | Show a list of available targets.                              |
+| login     | Run a program to perform a network login on the target.        |
+| off       | Turn target off                                                |
+| on        | Turn target on                                                 |
+| pos       | Show power status of target                                    |
+| reboot    | Reboot (power on and off) target board.                        |
+| release   | Release a reservation of a target.                             |
+| reserve   | Reserve a target for use.                                      |
+| reset     | Reset target board.                                            |
+| rm        | Remove files from the target.                                  |
+| run       | Run a command on the target, collecting it's output            |
+| set_config | Set an individual config option                               | assumes the current directory is top kernel source dir
+| setenv    | Starts shell with environment for performing build and other operations |
+| status    | Show status of target, including reservations.                 | not implemented yet (currently only shows reservation, but not board status)
+| vars      | Show information about environment vars used by 'ttc'          |
+| version   | Show version information and exit.                             |
+| wait_for  | Wait for a condition to be true.                               | command is executed on host (not on the target)
 
 Use cases
 ~~~~~~~~~
