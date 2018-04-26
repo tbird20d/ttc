@@ -243,7 +243,7 @@ console
 
 Runs a program to access the target console.
 
-Usage: ttc [<target>] console
+Usage: ttc [*target*] console
 
 A program is run to provide interactive access to the target console.
 It is not possible to predict what program will be used. Often it is
@@ -257,7 +257,7 @@ cp
 
 Copy files to or from the target.
 
-Usage: ttc [<target>] cp <src1> [<src2> ...] <dest>
+Usage: ttc [*target*] cp *src1* [*src2* ...] *dest*
 
 The last path specified determines the direction of the copy.  Use the
 prefix "target:" to specify a filepath on the target.  "target_bin:" can
@@ -271,7 +271,7 @@ get_config
 
 Install kernel config for target in the $KBUILD_OUTPUT directory
 
-Usage: ttc [<target>] get_config [-o <otherdir>]
+Usage: ttc [*target*] get_config [-o *otherdir*]
 
 Use -o to specify an alternate KBUILD_OUTPUT directory (default is '.')
 Assumes the current directory is the top kernel source dir.
@@ -280,7 +280,7 @@ get_kernel
 ----------
 Install kernel sources for target in the $KERNEL_SRC directory
 
-Usage: ttc [<target>] get_kernel [-o <outputdir>]
+Usage: ttc [*target*] get_kernel [-o *outputdir*]
 
 Use -o to specify a specific output kernel source directory.
 The default output directory, if none is specified, is 'linux'.
@@ -289,7 +289,7 @@ help
 ----
 Show the online help.
 
-Usage: ttc help [<command>]
+Usage: ttc help [*command*]
 
 If a command is specified, show help Release a reservation of a target.and usage information for that command.
 
@@ -297,17 +297,17 @@ info
 ----
 Show information about a target.
 
-Usage ttc [<target>] info [-v] [-n <attr>]
+Usage ttc [*target*] info [-v] [-n *attr*]
 
 Show information about a target.  The '-v' (verbose) option will show all the
 attributes for the target (from the configuration file).  Use the '-n' option
-to display the value of a single attribute, <attr>.
+to display the value of a single attribute, *attr*.
 
 kinstall
 --------
 Install kernel for use on target.
 
-Usage: ttc [<target>] kinstall
+Usage: ttc [*target*] kinstall
 
 Assumes the current directory is the top kernel source directory.
 
@@ -325,31 +325,31 @@ login
 -----
 Run a program to perform a network login on the target.
 
-Usage: ttc [<target>] login
+Usage: ttc [*target*] login
 
 on
 --
 Turn on the power to the target
 
-Usage: ttc [<target>] on
+Usage: ttc [*target*] on
 
 off
 ---
 Turn off the power to the target
 
-Usage: ttc [<target>] off
+Usage: ttc [*target*] off
 
 pos
 ---
 Show the power status of the target
 
-Usage: ttc [<target>] pos
+Usage: ttc [*target*] pos
 
 reboot
 ------
 Reboot the target board.
 
-Usage: ttc [<target>] reboot [-w]
+Usage: ttc [*target*] reboot [-w]
 
 This performs a reboot (power cycle) of the target board. Use the '-w'
 option to have ttc wait a period of time before returning, to allow the
@@ -360,7 +360,7 @@ reset
 -----
 Reset the target board.
 
-Usage: ttc [<target>] reset [-w]
+Usage: ttc [*target*] reset [-w]
 
 This performs a soft reset of the target board, if available.  Note that
 if the hardware configuration does not support a soft reset, a reboot
@@ -372,25 +372,25 @@ rm
 --
 Remove files from the target.
 
-Usage: ttc [<target>] rm <file1> [<file2>...]
+Usage: ttc [*target*] rm *file1* [*file2* ...]
 
 run
 ---
 Run a command on the target, and return it's output.
 
-Usage: ttc [<target>] run "command <args>"
+Usage: ttc [*target*] run "*command* *args*"
 
 set_config
 ----------
 Set one or more individual config options
 
-Usage: ttc [<target>] set_config [-o <outputdir>] <option-def> ...
+Usage: ttc [*target*] set_config [-o *outputdir*] *option-def* ...
 
 Use -o to specify a non-default KBUILD_OUTPUT directory. (The default is
 '.' if none is specified in the environment or the target.conf file.)
 
-Multiple <option-defs> may be specified with one command.  Each
-<option-def> has the syntax: <option-name><operation><value>.i
+Multiple *option-defs* may be specified with one command.  Each
+*option-def* has the syntax: *option-name**operation**value*.i
 Operations are: '=' for assignment, and '+=' for a string append.
 Boolean or tristate values should be one of "y", "n", and "n".  String
 values must be enclosed in quotes, which usually requires shell escaping
@@ -410,7 +410,7 @@ setenv
 ------
 Prepare environment for building for the target
 
-Usage: ttc [<target>] setenv [-o >file]
+Usage: ttc [*target*] setenv [-o >*file*]
 
 This command starts a new shell, with an environment that is 
 prepared for building for the target.  That is, things like
@@ -430,18 +430,18 @@ status
 ------
 Show status of target, including reservations.
 
-Usage: ttc [<target>] status
+Usage: ttc [*target*] status
 
-This command shows the the status of the indicated target.  The full
-command for showing status is not implemented yet.  Currently, this
-command shows the reservation status of the target, but not any
-online/network/booted status for the target board.
+This command shows the the status of the indicated target.  This
+includes the power status, network status and ability to execute
+a command on the target.  It also shows any current reservation
+for the target board.
 
 vars
 ----
 Show information about variables and config files used by ttc
 
-Usage: ttc [<target>] vars
+Usage: ttc vars
 
 version
 -------
@@ -453,7 +453,7 @@ wait_for
 --------
 Wait for a condition to be true.
 
-Usage: ttc [<target>] wait_for [-i <interval>] [-t <timeout>] <command>
+Usage: ttc [*target*] wait_for [-i *interval*] [-t *timeout*] *command*
 
 The command is run periodically until it returns 0.  By default, the
 interval between executing the command is 5 seconds.  Use -i to specify
@@ -483,7 +483,6 @@ This section describes how to configure `ttc`.
 
 Configuration files and environment variables
 ---------------------------------------------
-
 Configuring ttc consists of creating the definitions for ttc attributes
 and sub-commands for a target.  Note that more than one ttc entry can be
 created for a single physical board.  This is useful when you are
@@ -494,15 +493,12 @@ different ttc configurations for these different setups.
 
 The global config file
 ----------------------
-
 The global config file for ttc is at /etc/ttc.conf.  If you do not have
 root access to your machine (to put or edit stuff in /etc), then you
 should use a local config file instead.
 
 Using a local config file
 -------------------------
-
-
 You can use a local ttc configuration file by creating the file, and
 specifying it's path in the shell environment variable TTC_CONF. For
 example you could do the following to use a local configuration file in
@@ -636,33 +632,86 @@ Supported attributes are:
 ==== Configuration attribute details ====
 This section lists each configuration attribute, and what its value should be.
 
-; target: Short (one-word) name of the target. If the target name starts with a '.', it is not displayed in the list from the command 'ttc list'.  This is similar to Linux directory listings, and is useful for having hidden targets, which other targets use as a base for inheritance.
-; real_board: Name of the real board for a target.  This is a convention that allows multiple target configurations to be defined for a single board.  For example, you could have a real board "omap", and define different target configurations for working with the board using android, or directly with embedded linux (e.g. with target configurations for "omap-android" and "omap-linux".  The 'real_board' value is used for reserving the board and checking it's status.  It is often used in variable form in blocks that are inherited by other target configurations.
-; inherit_from: Name of target configuration to inherit attributes from. Any attributes listed in the current target override attributes in the inherited-from target configuration.  A block that is inherited from may use %-style variable references to customize the commands in the block to the inheriting block.  For example, a inherited from block may specify kbuild_cmd as "kbuild_cmd=make %(kimage)s", and different inheriting targets could specify their own values for 'kimage' respectively.
-; description: A description of the target board.  Usually this is a multi-line value, and is intended to provide information about the target in human-readable form.
-; TOOL_PATH: Path where toolchain tools are located.  This appended to the PATH env. variable when a 'setenv' environment is constructed, and before any sub-commands are executed.
-; ARCH: Architecture specifier for the kernel build (eg. arm, ppc, i386)
-; CROSS_COMPILE: Toolchain prefix used with kernel builds (eg. arm-sony-linux- )
-; INSTALL_PATH: Place where the kernel is installed
+<dl>
+  <dt>target:</dt>
+  <dd>Short (one-word) name of the target. If the target name starts with a '.', it
+is not displayed in the list from the command 'ttc list'.  This is similar to
+Linux directory listings, and is useful for having hidden targets, which other
+targets use as a base for inheritance.</dd>
+
+  <dt>real_board:</dt>
+  <dd>Name of the real board for a target.  This is a convention that allows
+multiple target configurations to be defined for a single board.  For example,
+you could have a real board "omap", and define different target configurations
+for working with the board using android, or directly with embedded linux (e.g.
+with target configurations for "omap-android" and "omap-linux".  The
+'real_board' value is used for reserving the board and checking it's status.
+It is often used in variable form in blocks that are inherited by other target
+configurations.  ; inherit_from: Name of target configuration to inherit
+attributes from. Any attributes listed in the current target override
+attributes in the inherited-from target configuration.  A block that is
+inherited from may use %-style variable references to customize the commands in
+the block to the inheriting block.  For example, a inherited from block may
+specify kbuild_cmd as "kbuild_cmd=make %(kimage)s", and different inheriting
+targets could specify their own values for 'kimage' respectively.</dd>
+
+  <dt>description:</dt>
+  <dd>A description of the target board.  Usually this is a multi-line value, and
+is intended to provide information about the target in human-readable form.</dd>
+
+  <dt>TOOL_PATH:</dt>
+  <dd>Path where toolchain tools are located.  This appended to the PATH env.
+variable when a 'setenv' environment is constructed, and before any
+sub-commands are executed.</dd>
+
+  <dt>ARCH:</dt>
+  <dd>Architecture specifier for the kernel build (eg. arm, ppc, i386)</dd>
+
+  <dt>CROSS_COMPILE:</dt>
+  <dd>Toolchain prefix used with kernel builds (eg. arm-sony-linux- )</dt>
+
+  <dt>INSTALL_PATH:</dt>
+  <dd>Place where the kernel is installed</dd>
+</dl>
+
 ; KERNEL_SRC: Default name to use for kernel source directory
+
 ; KBUILD_OUTPUT: Default directory for kernel build output
+
 ; kimage: Name of the kernel image file (eg. bzImage, uImage)
+
 ; kinstall_cmd: Command(s) to install the kernel image.  (Assumes that the current working dir is $KERNEL_SRC)
+
 ; get_config_cmd: Command(s) to put a default kernel configuration file (.config) in $KBUILD_OUTPUT
+
 ; get_kernel_cmd: Command(s) to put the kernel source code in $KERNEL_SRC.
+
 ; copy_to_cmd: Command(s) to copy files from host to target.  This command should reference $src as the location of the file(s) on the host, and $dest as the location on the target for the copied file(s).
+
 ; copy_from_cmd: Command(s) to copy files from target to host. This command should reference $src as the location on the target to copy from, and $dest as the location on the host for the copied file(s).
+
 ; rm_cmd: Command(s) to remove files from target.  This command should reference $dest as the location on the target for the removed file(s).
+
 ; ipaddr: Target IP address
+
 ; reset_cmd: Command(s) to reset the target, from the host
+
 ; console_cmd: Command(s) to start an interactive console for the target (usually minicom)
+
 ; login_cmd: Command(s) to start an interactive login session with the target (usually telnet)
+
 ; target_bin: Directory on target where binary files are located
+
 ; fsbuild_cmd: Command(s) to build a root filesystem for the target
+
 ; fsinstall_cmd: Command(s) to install a root filesystem to the target
+
 ; reserve_cmd: Command(s) to reserve a board (like switching the root filesystem, in case of different users having different root filesystems)
+
 ; reboot_cmd: Command(s) to reboot the board.  This is intended to be a power-cycle of the board, producing a cold boot of the hardware.  Usually this is something like "powerswitch-cycle -n <board-name> -o 3 -d <some-delay>", but it depends on completely on how you have the board wired up for power and what the host needs to do to reboot it.  A helper command of powerswitch-cycle is provided for targets attached to web power switches from digital loggers. See http://www.digital-loggers.com/lpc.html.
+
 ; reset_cmd: Command(s) to reset the target, from the host. This is intended to be a soft reset of the hardware.  If you have automated control of a software reset pin or button on the board, then configure this command to activate it.  Otherwise, you could use something like: 'reset_cmd=ttc run reboot'
+
 ; run_cmd: Command to execute a command on the target.  This cmd should use $COMMAND as the string for the command to execute on target.  Some helper programs are provided to perform this execution using ssh or telnet (in case authentication or other handshaking is required to accomplish the execution.)  These are called ssh_exec and telnet_exec, respectively.
 
 Configuration Example
