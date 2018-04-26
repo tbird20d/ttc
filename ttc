@@ -23,6 +23,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  1.4.2  - add command status to 'status' command
 #  1.4.1  - add power status and network status to 'status' command
 #  1.4.0  - pass multiple args to run command (everything following 'run' in
 #           command line).  Also, remove trailing whitespace from some lines.
@@ -58,7 +59,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,4,1)
+VERSION = (1,4,2)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -528,15 +529,26 @@ def power_status(tmap):
 
         return pos_str
 
-# returns one of: 'OPERATING', 'INOPERATIVE'
+# returns one of: 'RESPONSIVE', 'NONRESPONSIVE'
 def network_status(tmap):
         rcode, result = commands.getstatusoutput( \
-                "ping -c 5 -W 1 %s" % tmap["ip_addr"])
+                "ping -c 5 -i 0.3 -W 1 %s" % tmap["ip_addr"])
 
         if rcode==0:
             return "RESPONSIVE"
         else:
             return "NONRESPONSIVE"
+
+# returns one of: 'OPERATIVE', 'INOPERATIVE'
+def command_status(tmap):
+        rcode, result = commands.getstatusoutput( \
+                'ttc %s run echo \"hello response\"' % tmap["target"])
+
+        m = re.search(r"hello response", result)
+        if m:
+            return "OPERATIVE"
+        else:
+            return "INOPERATIVE"
 
 def do_status(tmap):
 	target = tmap["target"]
@@ -550,6 +562,8 @@ def do_status(tmap):
         net_str = network_status(tmap)
         print "Network status is: %s" % net_str
 
+        cmd_str = command_status(tmap)
+        print "Command status is: %s" % cmd_str
 
 	# show who is currently using target
 	res = get_reservation(tmap)
