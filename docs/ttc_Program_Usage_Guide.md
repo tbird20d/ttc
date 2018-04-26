@@ -136,25 +136,23 @@ use it by running an automated test (which invokes target to perform
 various parts of the test.)
 
 Commands
-++++++++
+========
 
-Command overview
-~~~~~~~~~~~~~~~~
+Command Overview
+----------------
 
 Here is the list of sub-commands available for user with the
 <code>ttc</code> command.
 
-| Command   | Operation                                            | Notes |
-| --------- | ---------------------------------------------------- | ----- |
-| console   | Run a program to access the target console.          |
-
-
-| cp        | Copy files to or from the target.                              |
-| fsbuild   | File system build                                              |
-| fsinstall | File system install                                            |
-| get_config| Install kernel config for target in the $KBUILD_OUTPUT directory | assumes the current directory is top kernel source dir.
-| get_kernel| Install kernel sources for target in the $KERNEL_SRC directory |
-| help      | Show this online help.                                         |
+| Command   | Operation                                               | Notes |
+| --------- | ------------------------------------------------------- | ----- |
+| console   | Run a program to access the target console.             | foo   |
+| cp        | Copy files to or from the target.                       |
+| fsbuild   | File system build                                       |
+| fsinstall | File system install                                     |
+| get_config| Install kernel config in the $KBUILD_OUTPUT directory   | assumes the current directory is top kernel source dir.
+| get_kernel| Install kernel source in the $KERNEL_SRC directory      |
+| help      | Show this online help.                                  |
 | info      | Show information about a target.                               |
 | kbuild    | Build kernel from source.                                      | assumes the current directory is the top kernel source dir.
 | kinstall  | Install kernel for use on target.                              | assumes the current directory is the top kernel source dir.
