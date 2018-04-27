@@ -629,7 +629,8 @@ Supported attributes are:
 | run_cmd        | Command to execute a command on the target||This command should reference $COMMAND as the string for the command to execute. |
 | reset_delay    | Time in seconds to wait after reseting or rebooting the target | Only used if '-w' is used with 'ttc reboot' or 'ttc reset' |
 
-==== Configuration attribute details ====
+Configuration attribute details
+-------------------------------
 This section lists each configuration attribute, and what its value should be.
 
 <dl>
