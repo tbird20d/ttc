@@ -633,14 +633,14 @@ Supported attributes are:
 This section lists each configuration attribute, and what its value should be.
 
 <dl>
-  <dt>target:</dt>
-  <dd>Short (one-word) name of the target. If the target name starts with a '.', it
-is not displayed in the list from the command 'ttc list'.  This is similar to
-Linux directory listings, and is useful for having hidden targets, which other
-targets use as a base for inheritance.</dd>
+  <dt> target </dt>
+  <dd> Short (one-word) name of the target. If the target name starts
+with a '.', it is not displayed in the list from the command 'ttc list'.
+This is similar to Linux directory listings, and is useful for having
+hidden targets, which other targets use as a base for inheritance. </dd>
 
-  <dt>real_board:</dt>
-  <dd>Name of the real board for a target.  This is a convention that allows
+  <dt> real_board </dt>
+  <dd> Name of the real board for a target.  This is a convention that allows
 multiple target configurations to be defined for a single board.  For example,
 you could have a real board "omap", and define different target configurations
 for working with the board using android, or directly with embedded linux (e.g.
@@ -653,66 +653,116 @@ attributes in the inherited-from target configuration.  A block that is
 inherited from may use %-style variable references to customize the commands in
 the block to the inheriting block.  For example, a inherited from block may
 specify kbuild_cmd as "kbuild_cmd=make %(kimage)s", and different inheriting
-targets could specify their own values for 'kimage' respectively.</dd>
+targets could specify their own values for 'kimage' respectively. </dd>
 
-  <dt>description:</dt>
-  <dd>A description of the target board.  Usually this is a multi-line value, and
-is intended to provide information about the target in human-readable form.</dd>
+  <dt> description </dt>
+  <dd> A description of the target board.  Usually this is a multi-line
+value, and is intended to provide information about the target in
+human-readable form. </dd>
 
-  <dt>TOOL_PATH:</dt>
-  <dd>Path where toolchain tools are located.  This appended to the PATH env.
-variable when a 'setenv' environment is constructed, and before any
-sub-commands are executed.</dd>
+  <dt> TOOL_PATH </dt>
+  <dd> Path where toolchain tools are located.  This appended to the PATH
+env.  variable when a 'setenv' environment is constructed, and before
+any sub-commands are executed. </dd>
 
-  <dt>ARCH:</dt>
+  <dt> ARCH </dt>
   <dd>Architecture specifier for the kernel build (eg. arm, ppc, i386)</dd>
 
-  <dt>CROSS_COMPILE:</dt>
-  <dd>Toolchain prefix used with kernel builds (eg. arm-sony-linux- )</dt>
+  <dt> CROSS_COMPILE </dt>
+  <dd> Toolchain prefix used with kernel builds (eg. arm-sony-linux- )</dt>
 
-  <dt>INSTALL_PATH:</dt>
-  <dd>Place where the kernel is installed</dd>
+  <dt> INSTALL_PATH </dt>
+  <dd> Place where the kernel is installed</dd>
+
+  <dt> KERNEL_SRC </dt>
+  <dd> Default name to use for kernel source directory</dd>
+
+  <dt> KBUILD_OUTPUT </dt>
+  <dd> Default directory for kernel build output</dd>
+
+  <dt> kimage </dt>
+  <dd> Name of the kernel image file (eg. bzImage, uImage)</dd>
+
+  <dt>kinstall_cmd</dt>
+  <dd> Command(s) to install the kernel image.  (Assumes that the
+current working dir is $KERNEL_SRC)</dd>
+
+  <dt>get_config_cmd</dt>
+  <dd> Command(s) to put a default kernel configuration file (.config)
+in $KBUILD_OUTPUT</dd>
+
+  <dt>get_kernel_cmd</dt>
+  <dd> Command(s) to put the kernel source code in $KERNEL_SRC.</dd>
+
+  <dt>copy_to_cmd</dt>
+  <dd> Command(s) to copy files from host to target.  This command
+should reference $src as the location of the file(s) on the host, and
+$dest as the location on the target for the copied file(s).</dd>
+
+  <dt>copy_from_cmd</dt>
+  <dd> Command(s) to copy files from target to host. This command should
+reference $src as the location on the target to copy from, and $dest as
+the location on the host for the copied file(s).</dd>
+
+  <dt>rm_cmd</dt>
+  <dd> Command(s) to remove files from target.  This command should
+reference $dest as the location on the target for the removed
+file(s).</dd>
+
+  <dt>ipaddr</dt>
+  <dd> Target IP address</dd>
+
+  <dt>reset_cmd</dt>
+  <dd> Command(s) to reset the target, from the host</dd>
+
+  <dt>console_cmd</dt>
+  <dd> Command(s) to start an interactive console for the target
+(usually minicom)</dd>
+
+  <dt>login_cmd</dt>
+  <dd> Command(s) to start an interactive login session with the target
+(usually telnet)</dd>
+
+  <dt>target_bin</dt>
+  <dd> Directory on target where binary files are located</dd>
+
+  <dt>fsbuild_cmd</dt>
+  <dd> Command(s) to build a root filesystem for the target</dd>
+
+  <dt>fsinstall_cmd</dt>
+  <dd> Command(s) to install a root filesystem to the target</dd>
+
+  <dt>reserve_cmd</dt>
+  <dd> Command(s) to reserve a board (like switching the root
+filesystem, in case of different users having different root
+filesystems)</dd>
+
+  <dt>reboot_cmd</dt>
+  <dd> Command(s) to reboot the board.  This is intended to be a
+power-cycle of the board, producing a cold boot of the hardware.
+Usually this is something like "powerswitch-cycle -n <board-name> -o 3
+-d <some-delay>", but it depends on completely on how you have the board
+wired up for power and what the host needs to do to reboot it.  A helper
+command of powerswitch-cycle is provided for targets attached to web
+power switches from digital loggers. See
+http://www.digital-loggers.com/lpc.html.</dd>
+
+  <dt>reset_cmd</dt>
+  <dd> Command(s) to reset the target, from the host. This is intended
+to be a soft reset of the hardware.  If you have automated control of a
+software reset pin or button on the board, then configure this command
+to activate it.  Otherwise, you could use something like: 'reset_cmd=ttc
+run reboot'</dd>
+
+  <dt>run_cmd</dt>
+  <dd> Command to execute a command on the target.  This cmd should use
+$COMMAND as the string for the command to execute on target.  Some
+helper programs are provided to perform this execution using ssh or
+telnet (in case authentication or other handshaking is required to
+accomplish the execution.)  These are called ssh_exec and telnet_exec,
+respectively.</dd>
+
 </dl>
-
-; KERNEL_SRC: Default name to use for kernel source directory
-
-; KBUILD_OUTPUT: Default directory for kernel build output
-
-; kimage: Name of the kernel image file (eg. bzImage, uImage)
-
-; kinstall_cmd: Command(s) to install the kernel image.  (Assumes that the current working dir is $KERNEL_SRC)
-
-; get_config_cmd: Command(s) to put a default kernel configuration file (.config) in $KBUILD_OUTPUT
-
-; get_kernel_cmd: Command(s) to put the kernel source code in $KERNEL_SRC.
-
-; copy_to_cmd: Command(s) to copy files from host to target.  This command should reference $src as the location of the file(s) on the host, and $dest as the location on the target for the copied file(s).
-
-; copy_from_cmd: Command(s) to copy files from target to host. This command should reference $src as the location on the target to copy from, and $dest as the location on the host for the copied file(s).
-
-; rm_cmd: Command(s) to remove files from target.  This command should reference $dest as the location on the target for the removed file(s).
-
-; ipaddr: Target IP address
-
-; reset_cmd: Command(s) to reset the target, from the host
-
-; console_cmd: Command(s) to start an interactive console for the target (usually minicom)
-
-; login_cmd: Command(s) to start an interactive login session with the target (usually telnet)
-
-; target_bin: Directory on target where binary files are located
-
-; fsbuild_cmd: Command(s) to build a root filesystem for the target
-
-; fsinstall_cmd: Command(s) to install a root filesystem to the target
-
-; reserve_cmd: Command(s) to reserve a board (like switching the root filesystem, in case of different users having different root filesystems)
-
-; reboot_cmd: Command(s) to reboot the board.  This is intended to be a power-cycle of the board, producing a cold boot of the hardware.  Usually this is something like "powerswitch-cycle -n <board-name> -o 3 -d <some-delay>", but it depends on completely on how you have the board wired up for power and what the host needs to do to reboot it.  A helper command of powerswitch-cycle is provided for targets attached to web power switches from digital loggers. See http://www.digital-loggers.com/lpc.html.
-
-; reset_cmd: Command(s) to reset the target, from the host. This is intended to be a soft reset of the hardware.  If you have automated control of a software reset pin or button on the board, then configure this command to activate it.  Otherwise, you could use something like: 'reset_cmd=ttc run reboot'
-
-; run_cmd: Command to execute a command on the target.  This cmd should use $COMMAND as the string for the command to execute on target.  Some helper programs are provided to perform this execution using ssh or telnet (in case authentication or other handshaking is required to accomplish the execution.)  These are called ssh_exec and telnet_exec, respectively.
 
 Configuration Example
 ---------------------
@@ -765,9 +815,7 @@ Here is a sample:
 
     target_bin=/devel/usr/bin
 
-
     #=================================================================================
-
     target=osk
     inherit_from=.telnet_defaults
     real_board=osk2
@@ -822,7 +870,6 @@ Here is a sample:
     get_kernel_cmd="""tar -xjf /home/rbatest/base/linux-2.6.10.tar.bz2
                     mv linux-2.6.10 $KERNEL_SRC"""
     get_config_cmd=cp /home/rbatest/base/config-nut-works-2.6.11-rc4 $KBUILD_OUTPUT/.config
-    </pre>
 
 Appendix B: Configuration tips and tricks
 =========================================
@@ -831,9 +878,9 @@ Should document the following here:
 Helper Programs included with ttc
 ---------------------------------
 * use of helper programs:
- * telnet_exec, ssh_exec - used to execute commands on the target, communicating either with a telnet daemon or ssh daemon (and handling things like specifying the user and password).
- * powerswitch-cycle - used to reboot boards attached to a Digital Loggers web power switch
- * switch-target-fs - used to switch between root filesystems when 'ttc reserve' is used
+  * telnet_exec, ssh_exec - used to execute commands on the target, communicating either with a telnet daemon or ssh daemon (and handling things like specifying the user and password).
+  * powerswitch-cycle - used to reboot boards attached to a Digital Loggers web power switch
+  * switch-target-fs - used to switch between root filesystems when 'ttc reserve' is used
 
 Using inheritance
 -----------------
@@ -850,17 +897,17 @@ Using an all-networked deployment system
 Using ttc with SDcard-based systems
 -----------------------------------
 * how to use a baseline (known working) kernel & rootfs with sdcard-based systems
-** configure SDcard with multiple partitions
-** configure uboot with timed delay
-** interrupt uboot from host by writing to serial console
-** select either known-working kernel or kernel-under-test to boot
-** for kinstall_cmd reboot to known-working kernel and use that kernel to write system under test to other partitions on SDCARD
-** for reboot_cmd, reboot to test kernel.
+  * configure SDcard with multiple partitions
+  * configure uboot with timed delay
+  * interrupt uboot from host by writing to serial console
+  * select either known-working kernel or kernel-under-test to boot
+  * for kinstall_cmd reboot to known-working kernel and use that kernel to write system under test to other partitions on SDCARD
+  * for reboot_cmd, reboot to test kernel.
 
 Using ttc with Android systems
 ------------------------------
 * how to wrap adb for android systems
-** Can use setenv_cmd to check for correct Android configuration
+  * Can use setenv_cmd to check for correct Android configuration
 
 Here is a snippet from a target configuration for an android-based device:
 
@@ -886,9 +933,9 @@ Here is a snippet from a target configuration for an android-based device:
     rm_cmd=adb shell rm $dest
     run_cmd=adb shell "$COMMAND"
 
-** specify prebuilt toolchains relative to $ANDROID_BUILD_TOP
-** use 'adb push' for copy_to_cmd, and 'adb pull' for copy_from_cmd.
-** use 'adb shell' for run_cmd
+  * specify prebuilt toolchains relative to $ANDROID_BUILD_TOP
+  * use 'adb push' for copy_to_cmd, and 'adb pull' for copy_from_cmd.
+  * use 'adb shell' for run_cmd
 
 Using ttc with a distribution produced with the Yocto Project
 -------------------------------------------------------------
