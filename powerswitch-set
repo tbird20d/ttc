@@ -63,3 +63,6 @@ fi
 
 echo "Turning ${on_off} ${name} power (outlet ${outlet})"
 wget --no-proxy -O /dev/null -q --auth-no-challenge http://${USER}:${PASSWORD}@${NET_ADDR}/outlet?${outlet}=${setting}
+if [ ! $? = 0 ] ; then
+    echo "Problem doing wget to ${NET_ADDR} to set power"
+fi
