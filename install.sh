@@ -12,7 +12,8 @@ if [ -z "$dest_path" ] ; then
 fi
 
 file_list="ttc telnet_exec ssh_exec powerswitch-cycle \
-	ttc_test_utils.py target-test.py powerswitch-set"
+	ttc_test_utils.py target-test.py powerswitch-set \
+    update-initrd.sh teensy-usb.py"
 
 echo "Copying from ${src_path} to ${dest_path}..."
 for f in $file_list ; do 
