@@ -184,6 +184,12 @@ command_help = {
 "kinstall":("Install kernel for use on target.",
 	"""Usage: ttc [<target>] kinstall"""),
 
+"mbuild":("Build kernel modules from source.",
+	"""Usage: ttc [<target>] mbuild"""),
+
+"minstall":("Install kernel modules for use on target.",
+	"""Usage: ttc [<target>] minstall"""),
+
 "fsbuild":("Build root filesystem for use on target.",
 	"""Usage: ttc [<target>] fsbuild"""),
 
@@ -1069,11 +1075,12 @@ def main():
 	# parse arguments
 	command_list = ["list", "info", "help", "--help", "-h", "version",
 		"console", "login", "status", "setenv", "kinstall",
-		"kbuild", "on", "off", "pos", "reset","reboot", "get_kernel", "get_config",
+		"kbuild", "mbuild", "minstall",
+		"on", "off", "pos", "reset","reboot", "get_kernel", "get_config",
 		"set_config", "cp", "rm", "wait_for", "fsbuild",
 		"fsinstall", "run", "vars", "reserve", "release"]
 	nontarget_commands = ["list", "help", "--help", "-h", "version", "vars"]
-	board_mod_commands = ["console", "login", "kinstall",
+	board_mod_commands = ["console", "login", "kinstall", "minstall",
 		"on", "off", "reset", "reboot", "cp", "rm", "fsinstall", "run"]
 	options = []
 
@@ -1209,8 +1216,8 @@ def main():
 	if command=="release":
 		do_release(tmap, options)
 
-	if command in ["kinstall", "reset", "reboot", "fsinstall", \
-		"kbuild", "on", "off", "pos", "fsbuild"]:
+	if command in ["kinstall", "minstall", "reset", "reboot", "fsinstall", \
+		"kbuild", "mbuild", "on", "off", "pos", "fsbuild"]:
 		exec_command(tmap, command)
 		if (command=="reset" or command=="reboot") and \
 			("-w" in options):
