@@ -23,7 +23,8 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
-#  1.4.2  - add command status to 'status' command
+#  1.4.3  - add mbuild and minstall
+#  1.4.2  - add command status to do 'status' command
 #  1.4.1  - add power status and network status to 'status' command
 #  1.4.0  - pass multiple args to run command (everything following 'run' in
 #           command line).  Also, remove trailing whitespace from some lines.
@@ -59,7 +60,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,4,2)
+VERSION = (1,4,3)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
