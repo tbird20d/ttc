@@ -30,5 +30,5 @@ Online documentation is available at:
 http://elinux.org/Ttc_Program_Usage_Guide
 
 ## Authorship
-Author: 'ttc' was written by Tim Bird, <tim.bird (at) sonymobile.com>
+Author: 'ttc' was written by Tim Bird, <tim.bird (at) sony.com>
 Copyright: (c) 2005-2016 Sony Corporation
