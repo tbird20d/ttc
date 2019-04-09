@@ -23,6 +23,8 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  1.4.4  - add support for ~/.config/ttc.conf, and change config file handling
+#           so that /etc/ttc.conf is optional
 #  1.4.3  - add mbuild and minstall
 #  1.4.2  - add command status to do 'status' command
 #  1.4.1  - add power status and network status to 'status' command
@@ -60,7 +62,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,4,3)
+VERSION = (1,4,4)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -71,7 +73,8 @@ quiet = 0
 verbose = 0
 
 # keep configuration file in /etc
-config_dir = "/etc"
+system_config_dir = "/etc"
+user_config_dir = os.path.expanduser("~/.config")
 CONFIG_FILE = "ttc.conf"
 
 # This is the name of the environment variable
@@ -80,7 +83,6 @@ TARGET_ENV_VAR="TTC_TARGET"
 
 # specify local configuration file via an environment variable
 LOCAL_CONF_ENV_VAR="TTC_CONF"
-local_conf = ""
 
 # specify logging variable
 LOG_ENV_VAR="TTC_SYSLOG"
@@ -245,13 +247,16 @@ See the code for the meaning and usage of each of these variables.
 
 The order of reading configuration values is:
  1. read the global config file (%s)
- 2. read a local config file (if specified by %s)
- 3. read environment variables
+ 2. read the user config file (%s)
+ 3. read a local config file (if specified by %s)
+ 4. read environment variables
 
 Values specified in the local config file override values in the global config
 file, and values in the environment override values in either config file.
 """ % (TARGET_ENV_VAR, LOCAL_CONF_ENV_VAR, LOG_ENV_VAR,
-	config_dir+"/"+CONFIG_FILE, LOCAL_CONF_ENV_VAR )),
+	system_config_dir+"/"+CONFIG_FILE,
+	user_config_dir+"/"+CONFIG_FILE,
+	LOCAL_CONF_ENV_VAR )),
 
 }
 
@@ -318,13 +323,16 @@ def error_out(message, rcode):
 # name="""value line 1
 # value line 2, etc."""
 
-def read_config(config_path):
+def read_config(config_path, optional=True):
 	# look in configuration directory
 	info_file = os.path.basename(config_path)
 	try:
 		fl = open(config_path)
 	except:
-		error_out("Cannot open configuration file %s" % config_path, 3)
+		if optional:
+			return {}
+		else:
+			error_out("Cannot open configuration file %s" % config_path, 3)
 
 	targets = {}
 	target = "not found"
@@ -394,6 +402,9 @@ def read_config(config_path):
 	# check to see if any attributes are "homeless"
 	if targets.has_key("not found"):
 		print_error("Some attributes found outside of target blocks in file %s" % info_file)
+
+	if not targets:
+		print_error("No targets were found in file %s" % info_file)
 
 	#print "targets=", targets
 	return targets
@@ -875,7 +886,7 @@ def get_reservation(tmap):
 
 	if reserved:
 		# reservation file exists, read it for details
-		temp_targets = read_config(rfile)
+		temp_targets = read_config(rfile, optional=False)
 		trec = temp_targets[real_board]
 		RES_USER = trec["USER"]
 		start_time = trec["start_time"]
@@ -1018,14 +1029,30 @@ def main():
 		do_log_init()
 
 	# read target information file for this host
-	targets = read_config(config_dir + "/" + CONFIG_FILE)
+	targets = read_config(system_config_dir + "/" + CONFIG_FILE)
+
+	# merge info from user config, if present
+	user_conf = user_config_dir + "/" + CONFIG_FILE
+	if os.path.exists(user_conf):
+		user_targets = read_config(user_conf)
+		for tname in user_targets.keys():
+			tmap = user_targets[tname]
+			# for bookkeeping, record the user file where
+			# this info came from
+			tmap["user_conf"] = user_conf
+			if targets.has_key(tname):
+				# if already present, merge the local info
+				targets[tname].update(tmap)
+			else:
+				# else just add the local info
+				targets[tname] = tmap
 
 	# merge info from local config, if specified
 	if os.environ.has_key(LOCAL_CONF_ENV_VAR):
 		local_conf = os.environ[LOCAL_CONF_ENV_VAR]
 		local_conf_list = local_conf.split(":")
 		for local_conf in local_conf_list:
-			local_targets = read_config(local_conf)
+			local_targets = read_config(local_conf, optional=False)
 			for tname in local_targets.keys():
 				tmap = local_targets[tname]
 				# for bookkeeping, record the local file where
@@ -1045,6 +1072,8 @@ def main():
 			talias = targets[tname]["target_alias"]
 			target_alias[talias] = tname
 
+	if not targets:
+		error_out("No valid targets were specified in any config file.\nPlease use 'ttc vars' for help on valid config files and locations.")
 
 	# perform inheritance, if specified
 	# example of simple inheritance:
