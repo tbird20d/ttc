@@ -23,6 +23,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  1.5.0  - change 'ttc run' to perform an exec
 #  1.4.4  - add support for ~/.config/ttc.conf, and change config file handling
 #           so that /etc/ttc.conf is optional
 #  1.4.3  - add mbuild and minstall
@@ -62,7 +63,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,4,4)
+VERSION = (1,5,0)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -534,6 +535,68 @@ def exec_command(tmap, command, use_system=1):
 	if full_cmd:
 		print_error('Error - trailing slash on last non-empty line of %s_cmd\nCommand was NOT executed.' % command)
 		sys.exit(3)
+
+# cmd can be a single line, or a list of commands to run
+# NOTE: this does not support line continuation.
+# The last line of the command block will be fork and exec'ed.
+# For all but the last command, use getstatusoutput.
+# This code assumes all but the last command run quickly.
+def do_run(tmap, options):
+    global verbose
+    global quiet
+    import shlex
+
+    os.environ["COMMAND"] = " ".join(options)
+    cmd_to_run = " ".join(options)
+
+    cmd_block = ""
+    try:
+        cmd_block = tmap["run_cmd"]
+    except:
+        pass
+
+    if not cmd_block:
+        print_error('run_cmd not configured for target %s' % (tmap["target"]))
+
+    # cmd can be a single line, or a list of commands to run
+    cmds = cmd_block.split('\n')
+    last_cmd = cmds[-1]
+    for cmd in cmds[:-1]:
+        if verbose:
+            print "cmd='%s'" % cmd
+        cmd = cmd.strip()
+        if not cmd:
+            continue
+
+        # execute cmd
+        (rcode, result) = commands.getstatusoutput(cmd)
+        if not quiet:
+            if verbose:
+                print "result=",
+            print result,
+            try:
+                sys.stdout.flush()
+                sys.stderr.flush()
+            except:
+                pass
+        if rcode:
+            print_error('Bad result %d, running "%s": (output follows)' % (rcode, cmd))
+            print_error(result)
+            sys.exit(rcode)
+
+    if verbose:
+        print "cmd='%s'" % last_cmd
+
+    last_cmd = last_cmd.replace("$COMMAND", cmd_to_run)
+    exec_args = shlex.split(last_cmd)
+
+    # make sure nothing is left in python file buffers
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except IOError:
+        pass
+    os.execvp(exec_args[0], exec_args)
 
 # returns one of: 'UKNOWN', 'ON', 'OFF'
 def power_status(tmap):
@@ -1282,8 +1345,8 @@ def main():
 		sys.exit(0)
 
 	if command=="run":
-		os.environ["COMMAND"] = " ".join(options)
-		exec_command(tmap, command)
+		do_run(tmap, options)
+                # this does not return
 		sys.exit(0)
 
 	if command=="get_config":
