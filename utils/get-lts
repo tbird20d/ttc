@@ -1,0 +1,119 @@
+#!/bin/bash
+# get-lts - download lts kernel specified, from kernel.org stable git
+# repository, and checkout requested branch
+#
+# todo:
+# see if kernel is already present
+
+#set -x
+
+LTS_REPO=git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
+
+function usage {
+    cat <<HERE
+Usage: get-lts [<options>] <version> [<output_dir>]
+
+This program clones the Linux stable git repository,
+and checks out a branch for the indicated version.
+The upstream LTS repo is at:
+${LTS_REPO}
+
+<version> is a branch name in the LTS tree.
+  ex: linux-4.4.y
+
+Note that there are branches for each LTS version, and tags for
+point releases in each branch (e.g. v4.4.128)
+
+If no output_dir is specified, the environment variable \$KERNEL_SRC
+is used.  If that is not defined, then the cloned repo will be put in
+the directory 'linux-stable'.
+
+ -h  Show usage help
+ -l  Show available kernel versions
+ -t  Show tags for the tip of every branch
+
+If the output_dir already exists, and has a clone of the tree, then
+the tree will be fetched, and the branch switched to the requested version.
+HERE
+    exit $1
+}
+
+if [ "$1" = '-h' ] ; then
+    usage 0
+fi
+
+if [ "$1" = '-l' ] ; then
+    cat <<VHERE
+== Available LTS kernel versions ==
+linux-3.2.y
+linux-3.4.y - unsupported
+linux-3.10.y - unsupported
+linux-3.16.y
+linux-3.18.y - unsupported
+linux-4.1.y
+linux-4.4.y
+linux-4.9.y
+linux-4.14.y
+VHERE
+    exit 0
+fi
+
+export SHOW_TAGS=0
+if [ "$1" = '-t' ] ; then
+    export SHOW_TAGS=1
+    shift
+fi
+
+branch_name="$1"
+if [ -z "$branch_name" ] ; then
+    echo "Error: Missing LTS version to get."
+    echo "Aborting..."
+    usage 1
+fi
+
+# get output directory
+if [ -n "$2" ]  ; then
+    output_dir="$2"
+else
+    if [ -n "$KERNEL_SRC" ] ; then
+        output_dir="$KERNEL_SRC"
+    else
+        output_dir="linux-stable"
+    fi
+fi
+
+if [ ! -d $output_dir ] ; then
+    # try creating it
+    mkdir -p $output_dir
+    if [ ! -d $output_dir ] ; then
+        echo "Error: invalid output directory '$output_dir'"
+        echo "Aborting..."
+        exit 1
+    fi
+fi
+
+# retrieve the source
+if [ -f "$output_dir/MAINTAINERS" ] ; then
+    pushd "$output_dir" >/dev/null
+    git pull
+else
+    git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git "$output_dir"
+    pushd "$output_dir" >/dev/null
+fi
+git checkout $branch_name
+DESCRIBE_STR=$(git describe)
+popd >/dev/null
+
+if [ "$SHOW_TAGS" = "1" ] ; then
+    echo "Tip tag for each LTS branch"
+    pushd "$output_dir" >/dev/null
+    git branch -a | grep remotes | grep -v master | while IFS= read -r line; do
+       ver=$(echo $line | sed "s#remotes/origin/linux-##" | sed "s/.y//")
+       git tag | grep "v$ver" | sort -V | tail -n 1
+    done
+    popd >/dev/null
+fi
+
+# report
+echo "Kernel source for $branch_name is in dir: $output_dir"
+echo "Currently at: ${DESCRIBE_STR}"

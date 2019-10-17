@@ -1,0 +1,84 @@
+#!/bin/bash
+# get-ubuntu-patches - download the patches required to convert
+# mainline kernel into ubuntu kernel
+#
+# todo:
+
+set -x
+
+# UM = Ubuntu Mainline
+# uk = ubuntu-kernel
+UM_KERNEL_SITE=http://kernel.ubuntu.com/~kernel-ppa/mainline
+
+function usage {
+    cat <<HERE
+Usage: get-ubuntu-patches [<options>] <version> [<output_dir>]
+
+<version> is an Ubuntu mainline kernel to use:
+  ex: v4.4.113
+
+If no output_dir is specified, the environment variable \$KERNEL_SRC
+is used.  If that is not defined, then directory 'ubuntu-patches' is used.
+
+ -h  Show usage help
+HERE
+    exit $1
+}
+
+if [ "$1" = '-h' ] ; then
+    usage 0
+fi
+
+version="$1"
+if [ -z "$version" ] ; then
+    echo "Error: Missing Ubuntu kernel version."
+    echo "Aborting..."
+    usage 1
+fi
+
+# get output directory
+if [ -n "$2" ]  ; then
+    output_dir="$2"
+else
+    if [ -n "$KERNEL_SRC" ] ; then
+        output_dir="$KERNEL_SRC"
+    else
+        output_dir="ubuntu-patches"
+    fi
+fi
+
+if [ ! -f ${output_dir}/Makefile ] ; then
+    echo "Error: invalid output directory '$output_dir'"
+    echo "Aborting..."
+    usage 1
+fi
+
+echo "output_dir=${output_dir}"
+VERSION=$(grep VERSION "${output_dir}/Makefile" | head -n 1 | sed "s/.* = //")
+PATCHLEVEL=$(grep PATCHLEVEL "${output_dir}/Makefile" | head -n 1 | sed "s/.* = //")
+SUBLEVEL=$(grep SUBLEVEL "${output_dir}/Makefile" | head -n 1 | sed "s/.* = //")
+
+uk_ver="v${VERSION}.${PATCHLEVEL}.${SUBLEVEL}"
+
+if [ "${version}" !=  "${uk_ver}" ] ; then
+    echo "WARNING: kernel version mismatch!"
+    echo "you specified verison $version"
+    echo "detected version in output directory $output_dir is $uk_ver"
+fi
+
+# retrieve the source
+pushd "$output_dir"
+wget ${UM_KERNEL_SITE}/${uk_ver}/SOURCES .
+if [ ! -e SOURCES ] ; then
+    echo "Error: Failed to download Ubuntu kernel SOURCES file for ${uk_ver}"
+    echo "Aborting..."
+    popd
+    exit 1
+fi
+
+tail -n +2 SOURCES | while read patchname ; do
+  wget ${UM_KERNEL_SITE}/${uk_ver}/$patchname ;
+done
+
+# report
+echo "Ubuntu Kernel patches source for ${uk_ver} are in: $output_dir"
