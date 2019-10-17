@@ -685,8 +685,8 @@ def do_setenv(tmap, options=[]):
 	# copy certain environment vars for the new shell
 	env_list = ["ARCH", "CROSS_COMPILE", "kimage", "INSTALL_PATH",
 		"INSTALL_MOD_PATH", "ADBHOST", "BUILDDIR",
-		"KERNEL_SRC", "KBUILD_OUTPUT", "TOOL_PATH", "TMPDIR"]
-
+		"KERNEL_SRC", "KBUILD_OUTPUT", "SSHPASS",
+		"TOOL_PATH", "TMPDIR"]
 
 	for var in env_list:
 		if tmap.has_key(var) and tmap[var] and not os.environ.has_key(var):
@@ -1285,6 +1285,10 @@ def main():
 	# expand macros
 	for name,value in tmap.items():
 		tmap[name] = expand_macros(value, tmap)
+
+        # export some special environment variables
+        if tmap.has_key("SSHPASS"):
+            os.environ["SSHPASS"] = tmap["SSHPASS"]
 
 	# log if env 'TTC_LOG' is set.
 	do_log(command, tmap, options)
