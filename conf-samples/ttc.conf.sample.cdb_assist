@@ -1,0 +1,14 @@
+# Some notes on syntax and conventions
+# Attributes that end in "_cmd" are assumed to be shell
+# commands, which will be executed in shell context
+# Each line of a multi-line _cmd will be executed
+# in its own sub-shell.  (i.e. don't count on 
+# exports or cd's being persistent from one line to 
+# the next)
+# 
+# The get_kernel_cmd should output the kernel source
+# to the directory specified by $KERNEL_SRC
+#===========================================================
+target=cdb_assist
+console_cmd=minicom -w -o -D /dev/ttyACM0
+
