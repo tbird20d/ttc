@@ -587,8 +587,15 @@ def do_run(tmap, options):
     if verbose:
         print "cmd='%s'" % last_cmd
 
-    last_cmd = last_cmd.replace("$COMMAND", cmd_to_run)
     exec_args = shlex.split(last_cmd)
+    # do a list replace of the argument with $COMMAND in it
+    new_exec_args = []
+    for arg in exec_args:
+        if "$COMMAND" in arg:
+            new_exec_args.extend(options)
+        else:
+            new_exec_args.append(arg)
+    exec_args = new_exec_args
 
     # make sure nothing is left in python file buffers
     try:
