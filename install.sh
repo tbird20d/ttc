@@ -11,11 +11,25 @@ if [ -z "$dest_path" ] ; then
 	exit 1 ;
 fi
 
-file_list="ttc telnet_exec ssh_exec powerswitch-cycle \
-	ttc_test_utils.py target-test.py powerswitch-set \
-    update-initrd.sh teensy-usb.py"
+if [ ! -d "$dest_path" ] ; then
+	echo "Error: destination path must be a directory"
+	exit 1 ;
+fi
 
-echo "Copying from ${src_path} to ${dest_path}..."
-for f in $file_list ; do 
-	cp ${src_path}/${f} ${dest_path} ;
+# copy the main tool
+echo "Copying ttc to ${dest_path}..."
+cp ${src_path}/ttc ${dest_path}
+
+utils_file_list="telnet_exec \
+	ssh_exec \
+	powerswitch-cycle \
+	powerswitch-set \
+	update-initrd.sh \
+	get-lts \
+	get-ubuntu-patches \
+	teensy-usb.py"
+
+echo "Copying utils to ${dest_path}..."
+for f in $utils_file_list ; do
+	cp ${src_path}/utils/${f} ${dest_path} ;
 done
