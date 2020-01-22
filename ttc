@@ -23,6 +23,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  1.5.1  - fix bug when no config files found
 #  1.5.0  - change 'ttc run' to perform an exec
 #  1.4.4  - add support for ~/.config/ttc.conf, and change config file handling
 #           so that /etc/ttc.conf is optional
@@ -63,7 +64,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,5,0)
+VERSION = (1,5,1)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -1143,7 +1144,7 @@ def main():
 			target_alias[talias] = tname
 
 	if not targets:
-		error_out("No valid targets were specified in any config file.\nPlease use 'ttc vars' for help on valid config files and locations.")
+            error_out("No valid targets were specified in any config file.\nHere is help on valid config files and locations:\n\n%s" % command_help["vars"][1], 1)
 
 	# perform inheritance, if specified
 	# example of simple inheritance:
