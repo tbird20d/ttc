@@ -23,6 +23,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  1.5.2  - allow quotes around single-line values
 #  1.5.1  - fix bug when no config files found
 #  1.5.0  - change 'ttc run' to perform an exec
 #  1.4.4  - add support for ~/.config/ttc.conf, and change config file handling
@@ -64,7 +65,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,5,1)
+VERSION = (1,5,2)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -386,6 +387,8 @@ def read_config(config_path, optional=True):
 		value = value.strip()
 		if value.find('"""')==-1:
 			# this is a single-line, just record the attribute
+		        if value.startswith('"') and value.endswith('"'):
+			    value = value[1:-1]
 			targets[target][name] = value
 		else:
 			# this is the start of a multi-line block
