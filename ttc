@@ -23,6 +23,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  1.5.3  - fix bug with ttc run and quoting
 #  1.5.2  - allow quotes around single-line values
 #  1.5.1  - fix bug when no config files found
 #  1.5.0  - change 'ttc run' to perform an exec
@@ -65,7 +66,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,5,2)
+VERSION = (1,5,3)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -550,8 +551,10 @@ def do_run(tmap, options):
     global quiet
     import shlex
 
-    os.environ["COMMAND"] = " ".join(options)
     cmd_to_run = " ".join(options)
+    # um, we just lost all quoting
+
+    os.environ["COMMAND"] = cmd_to_run
 
     cmd_block = ""
     try:
@@ -592,11 +595,19 @@ def do_run(tmap, options):
         print "cmd='%s'" % last_cmd
 
     exec_args = shlex.split(last_cmd)
-    # do a list replace of the argument with $COMMAND in it
+    # NOTE: shlex.split removes the quotes around "$COMMAND", if present
+
+    # copy args and check for substitution one-by-one
     new_exec_args = []
     for arg in exec_args:
         if "$COMMAND" in arg:
-            new_exec_args.extend(options)
+            if '"$COMMAND"' in last_cmd:
+                # if $COMMAND was quoted, then keep as one arg
+                # this is another band-aid on this tough problem
+                new_exec_args.append(cmd_to_run)
+            else:
+                # otherwise, add as separate args
+                new_exec_args.extend(options)
         else:
             new_exec_args.append(arg)
     exec_args = new_exec_args
