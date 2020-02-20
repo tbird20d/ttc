@@ -23,6 +23,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  1.5.4  - stop processing args after 'run' command is detected
 #  1.5.3  - fix bug with ttc run and quoting
 #  1.5.2  - allow quotes around single-line values
 #  1.5.1  - fix bug when no config files found
@@ -66,7 +67,7 @@ import commands
 import shutil
 
 # MAJOR, MINOR, REVISION
-VERSION = (1,5,3)
+VERSION = (1,5,4)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -1205,7 +1206,8 @@ def main():
 	verbose = 0
 	use_statusoutput = 0
 	# find command, target, and any arguments
-	for arg in sys.argv[1:]:
+	for i in range(1,len(sys.argv)):
+                arg = sys.argv[i]
 		if arg=="-q":
 			quiet = 1
 			continue
@@ -1215,6 +1217,13 @@ def main():
 		if arg=="-c":
 			use_statusoutput = 1
 			continue
+                if arg == "run":
+                        # stop processing arguments
+                        # so you can do: 'ttc run help' or 'ttc run reboot'
+                        # or 'ttc run command -h'
+                        command = "run"
+                        options = sys.argv[i+1:]
+                        break
 		if arg in command_list:
 			# support "ttc <command> help"
 			if (arg=="help" or arg=="-h" or arg=="--help") and command:
@@ -1242,6 +1251,7 @@ def main():
 		if arg in target_alias.keys():
 			target = target_alias[arg]
 			continue
+
 		options.append(arg)
 
 	if command=="help" or command=="--help" or command=="-h":
