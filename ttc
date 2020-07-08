@@ -67,8 +67,13 @@
 #  0.9.7 - 2008-05-12 Support inheritance using the inherit_from attribute
 
 import os, sys, string, re
-import subprocess
 import shutil
+
+# handle missing routines from python2 or python3 modules
+try:
+    from subprocess import getstatusoutput
+except:
+    from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION
 VERSION = (2,0,0)
@@ -530,7 +535,7 @@ def exec_command(tmap, command, use_system=1):
             full_cmd = ""
             result = ""
         else:
-            (rcode, result) = subprocess.getstatusoutput(full_cmd)
+            (rcode, result) = getstatusoutput(full_cmd)
             full_cmd = ""
         if not quiet:
             if verbose:
@@ -584,7 +589,7 @@ def do_run(tmap, options):
             continue
 
         # execute cmd
-        (rcode, result) = subprocess.getstatusoutput(cmd)
+        (rcode, result) = getstatusoutput(cmd)
         if not quiet:
             if verbose:
                 sys.stdout.write("result=")
@@ -632,7 +637,7 @@ def do_run(tmap, options):
 def power_status(tmap):
         pos_str = "UNKNOWN"
         if 'pos_cmd' in tmap:
-            (rcode, result) = subprocess.getstatusoutput( \
+            (rcode, result) = getstatusoutput( \
                     "ttc %s pos" % tmap["target"])
             m = re.search(r"\b(off|on)\b", result, re.IGNORECASE)
             if m:
@@ -642,7 +647,7 @@ def power_status(tmap):
 
 # returns one of: 'RESPONSIVE', 'NONRESPONSIVE'
 def network_status(tmap):
-        rcode, result = subprocess.getstatusoutput( \
+        rcode, result = getstatusoutput( \
                 "ping -c 5 -i 0.3 -W 1 %s" % tmap["ip_addr"])
 
         if rcode==0:
@@ -652,7 +657,7 @@ def network_status(tmap):
 
 # returns one of: 'OPERATIVE', 'INOPERATIVE'
 def command_status(tmap):
-        rcode, result = subprocess.getstatusoutput( \
+        rcode, result = getstatusoutput( \
                 'ttc %s run echo \"hello response\"' % tmap["target"])
 
         m = re.search(r"hello response", result)
@@ -829,7 +834,7 @@ def do_set_config(tmap, kernel_dir, kopts):
     bfile = kernel_dir+"/config.target-bak"
     print("Backing up current config file to %s" % os.path.basename(bfile))
     cmd = "cp %s %s" % (cfile, bfile)
-    (rcode, result) = subprocess.getstatusoutput(cmd)
+    (rcode, result) = getstatusoutput(cmd)
 
     # now set the vars.
     for kopt_spec in kopts:
@@ -1407,7 +1412,7 @@ def main():
                 print("Warning: missing build output directory '%s'" % outdir)
                 sys.stdout.write("Trying to create it now...")
                 cmd = "install -d %s" % outdir
-                (rcode, result) = subprocess.getstatusoutput(cmd)
+                (rcode, result) = getstatusoutput(cmd)
                 if rcode:
                     print()
                     print("Error: Could not create build output directory '%s'" % outdir)
