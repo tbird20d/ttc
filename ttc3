@@ -421,12 +421,15 @@ def do_list(targets):
 
     target_list = list(targets.keys())
     target_list.sort()
-    if not quiet: print("Targets on this host:")
+    if quiet:
+        prefix = ""
+    else:
+        print("Targets on this host:")
+        prefix = "    "
     for target in target_list:
         # omit hidden config blocks
         if target.startswith('.'):
             continue
-        if not quiet: print("   ", end=' ')
         talias = ''
         if not quiet and "target_alias" in targets[target]:
             talias = " (alias %s)" % targets[target]["target_alias"]
@@ -435,7 +438,7 @@ def do_list(targets):
         if not quiet and "real_board" in targets[target]:
             treal = " (real %s)" % targets[target]["real_board"]
 
-        print("%s%s%s" % (target, talias, treal))
+        print("%s%s%s%s" % (prefix, target, talias, treal))
     sys.exit(0)
 
 def do_info(tmap, options):
@@ -527,8 +530,8 @@ def exec_command(tmap, command, use_system=1):
             full_cmd = ""
         if not quiet:
             if verbose:
-                print("result=", end=' ')
-            print(result, end=' ')
+                sys.stdout.write("result=")
+            sys.stdout.write(result)
             try:
                 sys.stdout.flush()
             except:
@@ -580,8 +583,8 @@ def do_run(tmap, options):
         (rcode, result) = subprocess.getstatusoutput(cmd)
         if not quiet:
             if verbose:
-                print("result=", end=' ')
-            print(result, end=' ')
+                sys.stdout.write("result=")
+            sys.stdout.write(result)
             try:
                 sys.stdout.flush()
                 sys.stderr.flush()
@@ -1398,7 +1401,7 @@ def main():
             outdir = os.environ["KBUILD_OUTPUT"]
             if not os.path.exists(outdir):
                 print("Warning: missing build output directory '%s'" % outdir)
-                print("Trying to create it now...", end=' ')
+                sys.stdout.write("Trying to create it now...")
                 cmd = "install -d %s" % outdir
                 (rcode, result) = subprocess.getstatusoutput(cmd)
                 if rcode:
