@@ -733,7 +733,7 @@ def do_setenv(tmap, options=[]):
         for tool_path_item in tool_path.split(":"):
             if tool_path_item not in PATH:
                 PATH.append(tool_path_item)
-        os.environ["PATH"] = string.join(PATH,":")
+        os.environ["PATH"] = ":".join(PATH)
         # DEBUG
         #print("os.environ['PATH']="+os.environ["PATH"])
 
