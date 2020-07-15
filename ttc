@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.0.1  - Fix bug using subprocess.getstatusoutput (part of py3 conversion)
 #  2.0.0  - add support for the python 3 interpreter
 #           Also, convert all tabs to spaces.
 #           And eliminate use of print with a trailing comma.
@@ -76,7 +77,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION
-VERSION = (2,0,0)
+VERSION = (2,0,1)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
