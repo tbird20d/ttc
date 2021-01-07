@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.0.2  - Add support for fuego system conf (/fuego-rw/conf instead of /etc)
 #  2.0.1  - Fix bug using subprocess.getstatusoutput (part of py3 conversion)
 #  2.0.0  - add support for the python 3 interpreter
 #           Also, convert all tabs to spaces.
@@ -77,7 +78,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION
-VERSION = (2,0,1)
+VERSION = (2,0,2)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -89,8 +90,13 @@ verbose = 0
 
 # keep configuration file in /etc
 system_config_dir = "/etc"
+fuego_config_dir = "/fuego-ro/conf"
 user_config_dir = os.path.expanduser("~/.config")
 CONFIG_FILE = "ttc.conf"
+
+system_conf = system_config_dir + "/" + CONFIG_FILE
+fuego_conf = fuego_config_dir + "/" + CONFIG_FILE
+user_conf = user_config_dir + "/" + CONFIG_FILE
 
 # This is the name of the environment variable
 # used to keep track of the current target
@@ -262,6 +268,7 @@ See the code for the meaning and usage of each of these variables.
 
 The order of reading configuration values is:
  1. read the global config file (%s)
+    or, the fuego config file, if present (%s)
  2. read the user config file (%s)
  3. read a local config file (if specified by %s)
  4. read environment variables
@@ -269,10 +276,8 @@ The order of reading configuration values is:
 Values specified in the local config file override values in the global config
 file, and values in the environment override values in either config file.
 """ % (TARGET_ENV_VAR, LOCAL_CONF_ENV_VAR, LOG_ENV_VAR,
-       system_config_dir+"/"+CONFIG_FILE,
-       user_config_dir+"/"+CONFIG_FILE,
+       system_conf, fuego_conf, user_conf,
        LOCAL_CONF_ENV_VAR )),
-
 }
 
 
@@ -1128,10 +1133,12 @@ def main():
         do_log_init()
 
     # read target information file for this host
-    targets = read_config(system_config_dir + "/" + CONFIG_FILE)
+    if os.path.exists(fuego_conf):
+        targets = read_config(fuego_conf)
+    else:
+        targets = read_config(system_conf)
 
     # merge info from user config, if present
-    user_conf = user_config_dir + "/" + CONFIG_FILE
     if os.path.exists(user_conf):
         user_targets = read_config(user_conf)
         for tname in list(user_targets.keys()):
