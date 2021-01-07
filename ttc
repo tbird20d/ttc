@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.0.3  - Fix help for status and pos.
 #  2.0.2  - Add support for fuego system conf (/fuego-rw/conf instead of /etc)
 #  2.0.1  - Fix bug using subprocess.getstatusoutput (part of py3 conversion)
 #  2.0.0  - add support for the python 3 interpreter
@@ -78,7 +79,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION
-VERSION = (2,0,2)
+VERSION = (2,0,3)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -154,7 +155,19 @@ command_help = {
 #  Use a duration of 0 to cancel a reservation.
 #"""),
 
-"status":("Show status of target, including reservations. (not implemented yet)",""),
+"status":("Show status of target, including reservations.",
+    """Usage: ttc [<target>] status
+  Shows the power, network, command and reservation status for a
+  target.  The network status indicates whether the board responds
+  to a network ping.  The command status indicates whether the board
+  can execute a command.
+
+  Power status is one of: ON, OFF, UNKNOWN
+  Network status is one of: RESPONSIVE, NONRESPONSIVE
+  Command status is one of: OPERATIVE, INOPERATIVE
+  Reservation status shows "not reserved", or information about the
+      current reservation
+"""),
 
 "setenv":("Prepare environment for building for target.",
 """Usage: ttc [<target>] setenv [-o >file]
@@ -227,7 +240,9 @@ command_help = {
 """Usage: ttc [<target>] off"""),
 
 "pos":("Show power status of target board.",
-"""Usage: ttc [<target>] pos"""),
+"""Usage: ttc [<target>] pos
+  Shows the power status of the board.  This command emits the
+  string ON, OFF or UNKNOWN."""),
 
 "reset":("Reset target board.",
 """Usage: ttc [<target>] reset [-w]
@@ -315,7 +330,7 @@ command is one of:
     else:
         # print help for individual command
         print("ttc %s: %s" % (command, command_help[command][0]))
-        print()
+        print("")
         print(command_help[command][1])
 
     sys.exit(rcode)
