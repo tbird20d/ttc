@@ -599,33 +599,37 @@ def is_remote(tmap):
     else:
         return False
 
-def do_remote_command(hmap, tmap, command, options):
+def do_remote_command_exec(hmap, tmap, command, options):
     global quiet, debug, verbose
 
     hostname = hmap.get("hostname", hmap["host"])
     full_target = tmap["target"]
     remote_target = full_target.split(":")[1]
 
-    g_args = ""
-    if quiet: g_args += "-q"
-    if verbose: g_args += " -v"
-    if debug: g_args += " --debug"
+    exec_args = ["/usr/bin/ssh", "-t", hostname, "ttc"]
 
-    cmd_args = ''
+    # add ttc global args
+    if quiet: exec_args.append("-q")
+    if verbose: exec_args.append("-v")
+    if debug: exec_args.append("--debug")
+
+    exec_args.append(remote_target)
+    exec_args.append(command)
+
+    # add command arguments
     for opt in options:
-        cmd_args += ' "%s"' % opt
+        exec_args.append(opt)
 
-    # FIXTHIS - this interpolation loses quoted args
-    # (probably need something smarter than getstatusoutput here)
-    # (also need realtime interaction - probably an exec, for login, console
-    # and run)
-    cmd = "ssh %s ttc %s %s %s %s" % \
-        (hostname, g_args, remote_target, command, cmd_args)
-    dprint("remote cmd='%s'" % cmd)
-    (rcode, result) = getstatusoutput(cmd)
-    dprint("rcode=%d" % rcode)
-    print(result)
-    sys.exit(rcode)
+    # show what we're about to do
+    dprint("os.execvp(%s, %s)" % (exec_args[0], exec_args))
+
+    # make sure nothing is left in python file buffers
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except IOError:
+        pass
+    os.execvp(exec_args[0], exec_args)
 
 def do_info(tmap, options):
     global verbose
@@ -1449,7 +1453,7 @@ def main():
     nontarget_commands = ["list", "help", "--help", "-h", "version", "vars"]
     board_mod_commands = ["console", "login", "kinstall", "minstall",
         "on", "off", "reset", "reboot", "cp", "rm", "fsinstall", "run"]
-    easy_remote_commands = ["info", "reserve", "release", "status",
+    easy_remote_commands = ["info", "login", "reserve", "release", "status",
         "reboot", "on", "off", "pos", "reset", "rm", "run"]
 
     options = []
@@ -1597,7 +1601,7 @@ def main():
 
     if is_remote(tmap) and command in easy_remote_commands:
         hmap = hosts[tmap["host"]]
-        do_remote_command(hmap, tmap, command, options)
+        do_remote_command_exec(hmap, tmap, command, options)
 
     # do local environment setup
     do_setenv(tmap)
