@@ -602,11 +602,18 @@ def is_remote(tmap):
 def do_remote_command_exec(hmap, tmap, command, options):
     global quiet, debug, verbose
 
+    import shlex
+
     hostname = hmap.get("hostname", hmap["host"])
     full_target = tmap["target"]
     remote_target = full_target.split(":")[1]
 
-    exec_args = ["/usr/bin/ssh", "-t", hostname, "ttc"]
+    exec_cmd=hmap.get("exec_cmd", "/usr/bin/ssh")
+
+    cmd_args_str=hmap.get("cmd_args", "-t -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=2")
+    cmd_args = shlex.split(cmd_args_str)
+
+    exec_args = [exec_cmd] + cmd_args + [hostname, "ttc"]
 
     # add ttc global args
     if quiet: exec_args.append("-q")
@@ -621,7 +628,7 @@ def do_remote_command_exec(hmap, tmap, command, options):
         exec_args.append(opt)
 
     # show what we're about to do
-    dprint("os.execvp(%s, %s)" % (exec_args[0], exec_args))
+    dprint("os.execvp(%s, %s)" % (exec_cmd, exec_args))
 
     # make sure nothing is left in python file buffers
     try:
