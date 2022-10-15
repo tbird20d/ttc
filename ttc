@@ -6,7 +6,7 @@
 # Don't let anyone tell you that 'ttc' stands for "Tim's Target Control"
 # It's just not true.
 #
-# Copyright 2021 Sony Corporation
+# Copyright 2022 Sony Corporation
 #
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of version 2 of the GNU General Public License as
@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.1.1  - Support TTC_TARGET for remote targets (after ttc setenv)
 #  2.1.0  - Add support for federated ttc hosts.  This means ttc can
 #           transparently support operations on a board on a remote host.
 #           Some operations are local (such as kbuild or set_config), even
@@ -86,7 +87,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION
-VERSION = (2,1,0)
+VERSION = (2,1,1)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -1555,8 +1556,15 @@ def main():
         try:
             target = os.environ[TARGET_ENV_VAR]
             # check if target is OK
-            if target not in targets:
+            if target not in targets and target not in remote_targets:
                 error_out("Unknown target %s (specified by environment var. %s)" % (target, TARGET_ENV_VAR), 2)
+            if target in remote_targets:
+                # synthesize a tmap for this target
+                host = target.split(":")[0]
+                tmap = {"target": target, "host": host}
+                targets[target] = tmap
+            if verbose:
+                print("Using target: " + target)
         except:
             error_out('Missing or unrecognized target for command "%s"\nUse "ttc help" to get usage help.' % command, 2)
 
