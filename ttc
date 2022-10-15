@@ -24,6 +24,10 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.1.0  - Add support for federated ttc hosts.  This means ttc can
+#           transparently support operations on a board on a remote host.
+#           Some operations are local (such as kbuild or set_config), even
+#           when the board is remote.
 #  2.0.4  - Add --debug option, and use with do_run()
 #           Also, use debug_%(command)s_run, if present, when executing a
 #           command from the conf file, and we're in debug mode
@@ -82,7 +86,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION
-VERSION = (2,0,4)
+VERSION = (2,1,0)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -354,8 +358,10 @@ def error_out(message, rcode):
     sys.exit(rcode)
 
 # conf file syntax
-# map of maps, with target attributes in subsidiary map
-# key for top level map is target name
+# returns 2 maps: targets and hosts
+# targets is a map of maps, with target attributes in subsidiary map
+# hosts is a map of maps, with host attributes in subsidiary map
+# key for top level map is target or host name
 
 # ttc configuration (ttc.conf) file syntax:
 # ------------------------
@@ -370,7 +376,7 @@ def error_out(message, rcode):
 
 def read_config(config_path, optional=True):
     # look in configuration directory
-    info_file = os.path.basename(config_path)
+    config_file = os.path.basename(config_path)
     try:
         fl = open(config_path)
     except:
@@ -381,7 +387,11 @@ def read_config(config_path, optional=True):
 
     targets = {}
     target = "not found"
-    in_block = 0
+    hosts = {}
+    host = "not found"
+    in_target = False
+    in_host = False
+    in_block = False
     block = ""
     line_no = 0
     for line in fl.readlines():
@@ -394,26 +404,46 @@ def read_config(config_path, optional=True):
                 # remove quotes and end block
                 line = line.rstrip()
                 block += line[:-3] + "\n"
-                targets[target][name]= block
-                in_block = 0
+                if in_target:
+                    targets[target][name] = block
+                elif in_host:
+                    hosts[host][name] = block
+                else:
+                    print_error("end of block found outside of target or host definition in config file %s, at line %d" % (config_file, line_no))
+                in_block = False
                 continue
             else:
                 block += line
                 continue
 
-        # 'target=' inside a block will be confusing to the user
-        # but this code (above) ignores it
+        # 'target=' or 'host=' inside a block will be confusing to the user
+        # but the code (above) ignores it
+
         # if we're outside a block, look for the start of a new target
         if line.startswith("target="):
             target = line.split("=")[1].strip()
             # start a new target map
             if target in targets:
-                print_error("redefining target '%s' in configuration file %s" % (target, config_path))
+                print_error("redefining target '%s' in configuration file %s, at line %d" % (target, config_path, line_no))
             targets[target]={}
             targets[target]["target"] = target
+            in_target = True
+            in_host = False
             continue
 
-        # OK, it's not a target, comment or middle of a block.
+        # if we're outside a block, look for the start of a new host
+        if line.startswith("host="):
+            host = line.split("=")[1].strip()
+            # start a new host map
+            if host in hosts:
+                print_error("redefining host '%s' in configuration file %s, at lne %d" % (host, config_path, line_no))
+            hosts[host]={}
+            hosts[host]["host"] = host
+            in_host = True
+            in_target = False
+            continue
+
+        # OK, it's not a target, host, comment or middle of a block.
         # check if it's empty
         if not line.strip():
             continue
@@ -421,7 +451,7 @@ def read_config(config_path, optional=True):
         # line better have an equals in it
         # (either single line name=value, or multi-line block start)
         if line.find("=")==-1:
-            print_error("Syntax error in target info file %s: Expected '=' at line %d:\n%s" % (info_file, line_no, line))
+            print_error("Syntax error in config file %s: Expected '=' at line %d:\n%s" % (config_file, line_no, line))
             continue
 
         (name, value) = line.split('=', 1)
@@ -431,7 +461,12 @@ def read_config(config_path, optional=True):
             # this is a single-line, just record the attribute
             if value.startswith('"') and value.endswith('"'):
                 value = value[1:-1]
-            targets[target][name] = value
+            if in_target:
+                targets[target][name] = value
+            elif in_host:
+                hosts[host][name] = value
+            else:
+                print_error("attribute definition for '%s' found outside of target or host definition in config file %s, at line %d" % (name, config_file, line_no))
         else:
             # this is the start of a multi-line block
             vstart = value.find('"""')
@@ -442,30 +477,42 @@ def read_config(config_path, optional=True):
             # and ends on the same line.
             if block.endswith('"""\n'):
                 block = block[:-3]
-                targets[target][name] = block
+                if in_target:
+                    targets[target][name] = block
+                elif in_host:
+                    hosts[host][name] = block
+                else:
+                    print_error("attribute definition for '%s' found outside of target or host definition in config file %s, at line %d" % (name, config_file, line_no))
+
                 in_block = 0
 
 
     # check to see if any attributes are "homeless"
-    if "not found" in targets:
-        print_error("Some attributes found outside of target blocks in file %s" % info_file)
+    if "not found" in targets or "not found" in hosts:
+        print_error("Some attributes found outside of target or host blocks in file %s" % config_file)
 
-    if not targets:
-        print_error("No targets were found in file %s" % info_file)
+    if not targets and not hosts:
+        print_error("No targets or hosts were found in file %s" % config_file)
 
-    #print("targets="+targets)
-    return targets
+    #print("targets="+str(targets))
+    #print("hosts="+str(hosts))
+    return (targets, hosts)
 
-def do_list(targets):
+def do_list(targets, hosts):
     global quiet, verbose
 
-    target_list = list(targets.keys())
-    target_list.sort()
     if quiet:
         prefix = ""
+        quiet_arg = "-q"
     else:
-        print("Targets on this host:")
         prefix = "    "
+        quiet_arg = ""
+
+    # get local targets
+    target_list = list(targets.keys())
+
+    # format data for my local targets
+    output_lines = []
     for target in target_list:
         # omit hidden config blocks
         if target.startswith('.'):
@@ -478,7 +525,69 @@ def do_list(targets):
         if not quiet and "real_board" in targets[target]:
             treal = " (real %s)" % targets[target]["real_board"]
 
-        print("%s%s%s%s" % (prefix, target, talias, treal))
+        output_lines.append("%s%s%s%s" % (prefix, target, talias, treal))
+
+    # get targets from other hosts, and format the data
+    # (add host prefix to target, alias and real-board info)
+    for host in hosts:
+        dprint("reading data from host: %s" % host)
+        hostname = hosts[host].get("hostname", host)
+
+        # this list holds the a colon-delimited list of regular expression
+        # patterns for boards on this host to allow operations on
+        # if no target_pat_list is defined, all boards are used
+        # (ie, there is no filtering)
+        target_pat_list = hosts[host].get("target_pat_list", "")
+        tpats = target_pat_list.split(":")
+        if not tpats:
+            tpats = [".*"]
+
+        cmd = "ssh %s ttc %s list" % (hostname, quiet_arg)
+        dprint("cmd=%s" % cmd)
+        (rcode, result) = getstatusoutput(cmd)
+        dprint("rcode=%d" % rcode)
+        #print("result=%s" % result)
+        if rcode != 0:
+            print_error("problem reading targets from host %s" % host)
+            continue
+
+        for line in result.split('\n')[1:]:
+            dprint("line=%s" % line)
+            parts = line.strip().split(" ")
+            target = parts[0]
+            full_target = host + ":" + target
+
+            use_target = False
+            for pat in tpats:
+                if re.match(pat, target):
+                    use_target = True
+                dprint("pat=%s, target=%s, use_target=%s" % (pat, target, use_target))
+            if not use_target:
+                continue
+
+            talias = ''
+            if "(alias" in parts:
+                a_str = parts[parts.index("(alias")+1][:-1]
+                talias = " (alias %s:%s)" % (host, a_str)
+            treal = ''
+            if "(real" in parts:
+                r_str = parts[parts.index("(real")+1][:-1]
+                talias = " (real %s:%s)" % (host, r_str)
+
+            output_lines.append("%s%s%s%s" % (prefix, full_target, talias, treal))
+
+    output_lines.sort()
+
+    # show title
+    if not quiet:
+        if hosts:
+            print("Targets:")
+        else:
+            print("Targets on this host:")
+
+    for line in output_lines:
+        print(line)
+
     sys.exit(0)
 
 def do_info(tmap, options):
@@ -1033,7 +1142,7 @@ def get_reservation(tmap):
 
     if reserved:
         # reservation file exists, read it for details
-        temp_targets = read_config(rfile, optional=False)
+        temp_targets, temp_hosts = read_config(rfile, optional=False)
         trec = temp_targets[real_board]
         RES_USER = trec["USER"]
         start_time = trec["start_time"]
@@ -1178,31 +1287,38 @@ def main():
 
     # read target information file for this host
     if os.path.exists(fuego_conf):
-        targets = read_config(fuego_conf)
+        targets, hosts = read_config(fuego_conf)
     else:
-        targets = read_config(system_conf)
+        targets, hosts = read_config(system_conf)
 
     # merge info from user config, if present
     if os.path.exists(user_conf):
-        user_targets = read_config(user_conf)
+        user_targets, user_hosts = read_config(user_conf)
         for tname in list(user_targets.keys()):
             tmap = user_targets[tname]
             # for bookkeeping, record the user file where
             # this info came from
             tmap["user_conf"] = user_conf
             if tname in targets:
-                # if already present, merge the local info
+                # if already present, merge the user info
                 targets[tname].update(tmap)
             else:
-                # else just add the local info
+                # else just add the user info
                 targets[tname] = tmap
+        for hname in list(user_hosts.keys()):
+            hmap = user_hosts[hname]
+            hmap["user_conf"] = user_conf
+            if hname in hosts:
+                hosts[hname].update(hmap)
+            else:
+                hosts[hname] = hmap
 
     # merge info from local config, if specified
     if LOCAL_CONF_ENV_VAR in os.environ:
         local_conf = os.environ[LOCAL_CONF_ENV_VAR]
         local_conf_list = local_conf.split(":")
         for local_conf in local_conf_list:
-            local_targets = read_config(local_conf, optional=False)
+            local_targets, local_hosts = read_config(local_conf, optional=False)
             for tname in list(local_targets.keys()):
                 tmap = local_targets[tname]
                 # for bookkeeping, record the local file where
@@ -1214,6 +1330,13 @@ def main():
                 else:
                     # else just add the local info
                     targets[tname] = tmap
+            for hname in list(local_hosts.keys()):
+                hmap = local_hosts[hname]
+                hmap["local_conf"] = local_conf
+                if hname in hosts:
+                    hosts[hname].update(hmap)
+                else:
+                    hosts[hname] = hmap
 
     target_list = list(targets.keys())
     target_alias = {}
@@ -1333,7 +1456,7 @@ def main():
         sys.exit(0)
 
     if command=="list":
-        do_list(targets)
+        do_list(targets, hosts)
 
     # if no command recognized, return
     if not command:
@@ -1348,7 +1471,7 @@ def main():
             if target not in targets:
                 error_out("Unknown target %s (specified by environment var. %s)" % (target, TARGET_ENV_VAR), 2)
         except:
-            error_out('Missing target for command "%s"\nUse "ttc help" to get usage help.' % command, 2)
+            error_out('Missing or unrecognized target for command "%s"\nUse "ttc help" to get usage help.' % command, 2)
 
     tmap = targets[target]
 
