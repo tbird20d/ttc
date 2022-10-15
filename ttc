@@ -537,10 +537,8 @@ def do_list(targets, hosts):
         # patterns for boards on this host to allow operations on
         # if no target_pat_list is defined, all boards are used
         # (ie, there is no filtering)
-        target_pat_list = hosts[host].get("target_pat_list", "")
+        target_pat_list = hosts[host].get("target_pat_list", ".*")
         tpats = target_pat_list.split(":")
-        if not tpats:
-            tpats = [".*"]
 
         cmd = "ssh %s ttc %s list" % (hostname, quiet_arg)
         dprint("cmd=%s" % cmd)
@@ -551,7 +549,12 @@ def do_list(targets, hosts):
             print_error("problem reading targets from host %s" % host)
             continue
 
-        for line in result.split('\n')[1:]:
+        lines = result.split('\n')
+        if not quiet:
+            # remove title from remote results
+            del(lines[0])
+
+        for line in lines:
             dprint("line=%s" % line)
             parts = line.strip().split(" ")
             target = parts[0]
@@ -589,6 +592,40 @@ def do_list(targets, hosts):
         print(line)
 
     sys.exit(0)
+
+def is_remote(tmap):
+    if ":" in tmap["target"]:
+        return True
+    else:
+        return False
+
+def do_remote_command(hmap, tmap, command, options):
+    global quiet, debug, verbose
+
+    hostname = hmap.get("hostname", hmap["host"])
+    full_target = tmap["target"]
+    remote_target = full_target.split(":")[1]
+
+    g_args = ""
+    if quiet: g_args += "-q"
+    if verbose: g_args += " -v"
+    if debug: g_args += " --debug"
+
+    cmd_args = ''
+    for opt in options:
+        cmd_args += ' "%s"' % opt
+
+    # FIXTHIS - this interpolation loses quoted args
+    # (probably need something smarter than getstatusoutput here)
+    # (also need realtime interaction - probably an exec, for login, console
+    # and run)
+    cmd = "ssh %s ttc %s %s %s %s" % \
+        (hostname, g_args, remote_target, command, cmd_args)
+    dprint("remote cmd='%s'" % cmd)
+    (rcode, result) = getstatusoutput(cmd)
+    dprint("rcode=%d" % rcode)
+    print(result)
+    sys.exit(rcode)
 
 def do_info(tmap, options):
     global verbose
@@ -1345,10 +1382,7 @@ def main():
             talias = targets[tname]["target_alias"]
             target_alias[talias] = tname
 
-    if not targets:
-        error_out("No valid targets were specified in any config file.\nHere is help on valid config files and locations:\n\n%s" % command_help["vars"][1], 1)
-
-    # perform inheritance, if specified
+    # perform inheritance for local targets, if any is specified
     # example of simple inheritance:
     # target=osk-ccache
     # inherit_from=osk
@@ -1375,6 +1409,36 @@ def main():
                         targets[tname][key] = attr
                         attribute_added=1
 
+    # also get target names from configured hosts
+    remote_targets = []
+    for host in hosts:
+        dprint("reading data from host: %s" % host)
+        hostname = hosts[host].get("hostname", host)
+
+        # filter by target_pat_list, if specified
+        target_pat_list = hosts[host].get("target_pat_list", ".*")
+        tpats = target_pat_list.split(":")
+
+        cmd = "ssh %s ttc -q list" % hostname
+        dprint("cmd=%s" % cmd)
+        (rcode, result) = getstatusoutput(cmd)
+        dprint("rcode=%d" % rcode)
+        if rcode != 0:
+            print_error("problem reading targets from host %s" % host)
+            continue
+
+        for line in result.split('\n'):
+            dprint("line=%s" % line)
+            parts = line.strip().split(" ")
+            target = parts[0]
+            full_target = host+":"+target
+            remote_targets.append(full_target)
+
+    dprint("remote_targets=%s" % str(remote_targets))
+
+    if not targets and not remote_targets:
+        error_out("No valid targets were specified in any config file.\nHere is help on valid config files and locations:\n\n%s" % command_help["vars"][1], 1)
+
     # parse arguments
     command_list = ["list", "info", "help", "--help", "-h", "version",
         "console", "login", "status", "setenv", "kinstall",
@@ -1385,6 +1449,9 @@ def main():
     nontarget_commands = ["list", "help", "--help", "-h", "version", "vars"]
     board_mod_commands = ["console", "login", "kinstall", "minstall",
         "on", "off", "reset", "reboot", "cp", "rm", "fsinstall", "run"]
+    easy_remote_commands = ["info", "reserve", "release", "status",
+        "reboot", "on", "off", "pos", "reset", "rm", "run"]
+
     options = []
 
     target = ""
@@ -1437,6 +1504,15 @@ def main():
             target = arg
             if verbose:
                 print("Using target: " + target)
+            continue
+        if arg in remote_targets:
+            target = arg
+            if verbose:
+                print("Using target: " + target)
+            # synthesize a tmap for this target
+            host = target.split(":")[0]
+            tmap = {"target": target, "host": host}
+            targets[target] = tmap
             continue
         if arg in list(target_alias.keys()):
             target = target_alias[arg]
@@ -1518,6 +1594,10 @@ def main():
     # all non-target commands have been handled
     if command in board_mod_commands:
         check_reservation(tmap, command)
+
+    if is_remote(tmap) and command in easy_remote_commands:
+        hmap = hosts[tmap["host"]]
+        do_remote_command(hmap, tmap, command, options)
 
     # do local environment setup
     do_setenv(tmap)
