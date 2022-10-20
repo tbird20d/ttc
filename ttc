@@ -354,6 +354,13 @@ def print_error(message):
     sys.stderr.write("Error: "+message+"\n")
     sys.stderr.flush()
 
+# rcode meanings:
+#   1 = general (missing command or args, or invalid args)
+#   2 = unknown or missing target
+#   3 = config problem
+#   5 = local file operation problem
+#   6 = syntax problem in copy operation
+#   7 = problem with remote operation on ttc host
 def error_out(message, rcode):
     print_error(message)
     sys.exit(rcode)
@@ -608,28 +615,33 @@ def do_remote_command_exec(hmap, tmap, command, options):
     hostname = hmap.get("hostname", hmap["host"])
     full_target = tmap["target"]
     remote_target = full_target.split(":")[1]
+    ttc_has_debug = hmap.get("ttc_has_debug", "0")
+    if ttc_has_debug in ["true", "True", "1"]:
+        remote_ttc_has_debug = True
+    else:
+        remote_ttc_has_debug = False
 
     exec_cmd=hmap.get("exec_cmd", "/usr/bin/ssh")
 
-    cmd_args_str=hmap.get("cmd_args", "-t -q -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=2")
-    cmd_args = shlex.split(cmd_args_str)
+    exec_args_str=hmap.get("exec_args", "-t -q -o ConnectTimeout=2")
+    exec_args = shlex.split(exec_args_str)
 
-    exec_args = [exec_cmd] + cmd_args + [hostname, "ttc"]
+    cmd_args = [exec_cmd] + exec_args + [hostname, "ttc"]
 
     # add ttc global args
-    if quiet: exec_args.append("-q")
-    if verbose: exec_args.append("-v")
-    if debug: exec_args.append("--debug")
+    if quiet: cmd_args.append("-q")
+    if verbose: cmd_args.append("-v")
+    if remote_ttc_has_debug and debug: cmd_args.append("--debug")
 
-    exec_args.append(remote_target)
-    exec_args.append(command)
+    cmd_args.append(remote_target)
+    cmd_args.append(command)
 
     # add command arguments
     for opt in options:
-        exec_args.append(opt)
+        cmd_args.append(opt)
 
     # show what we're about to do
-    dprint("os.execvp(%s, %s)" % (exec_cmd, exec_args))
+    dprint("os.execvp(%s, %s)" % (exec_cmd, cmd_args))
 
     # make sure nothing is left in python file buffers
     try:
@@ -637,7 +649,7 @@ def do_remote_command_exec(hmap, tmap, command, options):
         sys.stderr.flush()
     except IOError:
         pass
-    os.execvp(exec_args[0], exec_args)
+    os.execvp(exec_cmd, cmd_args)
 
 def do_info(tmap, options):
     global verbose
@@ -704,15 +716,14 @@ def exec_command(tmap, command, use_system=1):
             pass
 
     if not cmd_block:
-        print_error('%s_cmd not configured for target %s' % (command, tmap["target"]))
+        error_out('%s_cmd not configured for target %s' % (command, tmap["target"]), 3)
 
     # cmd can be a single line, or a list of commands to run
     # lines can be continued with a trailing \
     cmds = cmd_block.split('\n')
     full_cmd = ""
     for cmd in cmds:
-        if verbose:
-            print("cmd="+cmd)
+        dprint("cmd="+cmd)
         cmd = cmd.strip()
         if not cmd:
             continue
@@ -721,9 +732,7 @@ def exec_command(tmap, command, use_system=1):
             full_cmd += '\n'
             continue
 
-        if verbose:
-            print("full_cmd={{{"+full_cmd)
-            print("}}}")
+        dprint("full_cmd={{{"+full_cmd+ "\n}}}")
 
         saved_cmd = full_cmd
         # execute full_cmd
@@ -1069,14 +1078,19 @@ def do_set_config(tmap, kernel_dir, kopts):
         set_config_value_in_file(cfile, op, config, value)
 
 
-def split_filepath(filepath):
-    # FIXTHIS - split_filepath doesn't handle ':' in file names or paths
+# split filepath by colon, and return prefix and remainder
+# Returns '' as prefix (and the path unchanged) if there's # no colon, or
+# if the prefix is something besides 'target' or 'target_bin'
+def split_filepath_by_colon(filepath):
     try:
-        (tspec, path) = filepath.split(':')
+        (prefix, path) = filepath.split(':', 1)
     except:
-        tspec = ''
-        path = filepath
-    return (tspec, path)
+        return ('', filepath)
+
+    if prefix not in ['target', 'target_bin']:
+        return ('', filepath)
+
+    return (prefix, path)
 
 def do_copy(tmap, objects):
     # copy must be one of:
@@ -1097,7 +1111,7 @@ def do_copy(tmap, objects):
         os.environ["copy_args"] = " "
 
     # find out direction of copy from the last argument
-    (tspec, path) = split_filepath(objects[-1])
+    (tspec, path) = split_filepath_by_colon(objects[-1])
     if tspec:    # we're copying *to* the target
         if tspec=="target":
             dest = path
@@ -1107,7 +1121,7 @@ def do_copy(tmap, objects):
             else:
                 dest="/usr/bin/" + path
         else:
-            error_out("Invalid target '%s' specified in dest path." % tspec, 6)
+            error_out("Invalid target prefix '%s' specified in dest path." % tspec, 6)
 
         # copy each file individually
         for src in objects[:-1]:
@@ -1118,34 +1132,170 @@ def do_copy(tmap, objects):
     else:    # no tspec in destination, direction is *from* target
         dest = path
         for file in objects[:-1]:
-            (tspec, src) = split_filepath(file)
+            (tspec, src) = split_filepath_by_colon(file)
             if tspec != "target":
-                error_out("Invalid target '%s' specified in src path." % tspec, 6)
+                error_out("Invalid target prefix '%s' specified in src path." % tspec, 6)
             os.environ["src"] = src
             os.environ["dest"] = dest
             exec_command(tmap, "copy_from")
     sys.exit(0)
 
-def do_rm(tmap, objects):
-    # we support file paths either with or without the target: qualifier
-    # (but they all operate on the target)
+def do_remote_copy(hmap, tmap, objects):
+    global quiet, debug, verbose
 
-    # FIXTHIS - need to report invalid number of arguments in do_rm
+    import shlex
+    import random
+
+    dprint("in do_remote_copy")
+
+    # if '-r' is specified, put it in 'copy_args' for sub-commands:
+    copy_args = ""
+    if objects[0] == '-r':
+        copy_args = "-r"
+        del(objects[0])
+
+    hostname = hmap.get("hostname", hmap["host"])
+    full_target = tmap["target"]
+    remote_target = full_target.split(":")[1]
+    ttc_has_debug = hmap.get("ttc_has_debug", "0")
+    if ttc_has_debug in ["true", "True", "1"]:
+        remote_ttc_has_debug = True
+    else:
+        remote_ttc_has_debug = False
+
+    exec_cmd=hmap.get("exec_cmd", "/usr/bin/ssh")
+    exec_args_str=hmap.get("exec_args", "-t -q -o ConnectTimeout=2")
+    exec_args = shlex.split(exec_args_str)
+
+    # set ttc global args
+    extra_ttc_args = []
+    if quiet: extra_ttc_args.append("-q")
+    if verbose: extra_ttc_args.append("-v")
+    if remote_ttc_has_debug and debug: extra_ttc_args.append("--debug")
+
+    # make a staging area on the ttc host
+    import random
+    uid = random.randint(0,100000)
+    staging_dir = "/tmp/ttc-cp-staging-%06d" % uid
+
+    cmd_args = [exec_cmd] + exec_args + [hostname, "mkdir", "-p", staging_dir]
+
+    cmd = " ".join(cmd_args)
+    dprint("make staging dir with cmd: '%s'" % cmd)
+    (rcode, result) = getstatusoutput(cmd)
+    if result:
+        print(result)
+    if rcode != 0:
+        error_out("Problem creating staging directory for remote copy operation, on host '%s'" % hostname, 7)
+
+    # find out direction of copy from the last argument
+    # if last arg starts with 'target' or 'target_bin', then
+    # this is a 'put' or 'copy_to'
+    (prefix, dest) = split_filepath_by_colon(objects[-1])
+
+    rcode_all = 0
+    if prefix:    # we're copying *to* the target
+        # copy each item individually, to staging dir, then to target
+        copy_to_cmd = hmap.get("copy_to_cmd",
+            "scp -r %(copy_args)s %(src)s %(hostname)s:%(dest)s")
+        for src in objects[:-1]:
+            # copy src to host:staging
+            cp_dict = {"hostname": hostname, "src":src, "dest": staging_dir, "copy_args": copy_args}
+            # interpolate vars into the cmd string
+            cmd = copy_to_cmd % cp_dict
+
+            dprint("copying %s to staging dir with cmd: '%s'" % (src, cmd))
+            (rcode, result) = getstatusoutput(cmd)
+            if result:
+                print(result)
+            if rcode != 0:
+                print_error("problem copying '%s' to staging dir on host %s" % (src, hostname))
+                rcode_all = rcode
+                continue
+
+            # now copy from host:staging to target:dest
+            cmd_args = [exec_cmd] + exec_args + [hostname, "ttc"] + \
+                extra_ttc_args + [remote_target, "cp"]
+            if copy_args:
+                cmd_args += [copy_args]
+
+            staging_src = staging_dir + "/" + os.path.basename(src)
+            cmd_args += [staging_src, "target:"+dest]
+            cmd = " ".join(cmd_args)
+            dprint("copying %s to target dest with cmd: '%s'" % (src, cmd))
+            (rcode, result) = getstatusoutput(cmd)
+            if result:
+                print(result)
+            if rcode != 0:
+                print_error("problem copying '%s' from staging dir on host %s to target" % (src, hostname))
+                rcode_all = rcode
+
+    else:
+        # no prefix in last arg, direction is *from* target
+        # ie - this is a 'get' or 'copy_from' and dest is local
+        copy_from_cmd = hmap.get("copy_from_cmd",
+            "scp -r %(copy_args)s %(hostname)s:%(src)s %(dest)s")
+
+        for item in objects[:-1]:
+            # copy from target:src to host:staging
+            cmd_args = [exec_cmd] + exec_args + [hostname, "ttc"] + \
+                extra_ttc_args + [remote_target, "cp"]
+
+            if copy_args:
+                cmd_args += [copy_args]
+
+            src = item
+            cmd_args += [src, staging_dir]
+            cmd = " ".join(cmd_args)
+            dprint("copying %s from target to staging with cmd: '%s'" % (src, cmd))
+            (rcode, result) = getstatusoutput(cmd)
+            if result:
+                print(result)
+            if rcode != 0:
+                print_error("problem copying '%s' from target to staging dir on host %s" % (src, hostname))
+                rcode_all = rcode
+                continue
+
+            # now copy from staging dir, to local dest
+            (tspec, src) = split_filepath_by_colon(item)
+            if tspec != "target":
+                error_out("Invalid target prefix '%s' specified in src path '%s'." % (tspec, item), 6)
+
+            staging_src = staging_dir + "/" + os.path.basename(src)
+            cp_dict = {"hostname": hostname, "src":staging_src, "dest": dest, "copy_args": copy_args}
+            cmd = copy_from_cmd % cp_dict
+            dprint("copying %s from staging to dest with cmd: '%s'" % (src, cmd))
+            (rcode, result) = getstatusoutput(cmd)
+            if result:
+                print(result)
+            if rcode != 0:
+                print_error("problem copying '%s' from staging dir on host %s to target" % (src, hostname))
+                rcode_all = rcode
+
+    # remove staging dir (be very careful with the path here!!)
+    cmd_args = [exec_cmd] + exec_args + [hostname, "rm", "-r", staging_dir]
+
+    # double-check staging dir (make sure the path is not bogus)
+    if " " in staging_dir or not staging_dir.startswith("/tmp"):
+        error_out("Invalid staging_dir '%s' found!! - aborting!!" % staging_dir, 7)
+
+    cmd = " ".join(cmd_args)
+    #dprint("removing staging dir with cmd: '%s'" % cmd)
+    #(rcode, result) = getstatusoutput(cmd)
+    if result:
+        print(result)
+    if rcode != 0:
+        error_out("Problem removing staging directory for remote copy operation, on host '%s'" % hostname, 7)
+
+    sys.exit(rcode_all)
+
+
+def do_rm(tmap, objects):
+    if not objects:
+        error_out("Missing items to remove", 1)
 
     # remove each file individually
-    for file in objects:
-        (tspec, path) = split_filepath(objects[-1])
-        dest = path
-        if tspec:    # adjust path for certain tspecs
-            if tspec=="target":
-                pass
-            elif tspec=="target_bin":
-                if "target_bin" in tmap:
-                    dest=tmap["target_bin"]+"/"+path
-                else:
-                    dest="/usr/bin/" + path
-            else:
-                error_out("Invalid target '%s' specified in dest path." % tspec, 6)
+    for dest in objects:
         os.environ["dest"] = dest
         exec_command(tmap, "rm")
         sys.exit(0)
@@ -1449,7 +1599,7 @@ def main():
     dprint("remote_targets=%s" % str(remote_targets))
 
     if not targets and not remote_targets:
-        error_out("No valid targets were specified in any config file.\nHere is help on valid config files and locations:\n\n%s" % command_help["vars"][1], 1)
+        error_out("No valid targets were specified in any config file.\nHere is help on valid config files and locations:\n\n%s" % command_help["vars"][1], 3)
 
     # parse arguments
     command_list = ["list", "info", "help", "--help", "-h", "version",
@@ -1462,7 +1612,7 @@ def main():
     board_mod_commands = ["console", "login", "kinstall", "minstall",
         "on", "off", "reset", "reboot", "cp", "rm", "fsinstall", "run"]
     easy_remote_commands = ["info", "login", "reserve", "release", "status",
-        "reboot", "on", "off", "pos", "reset", "rm", "run"]
+        "reboot", "on", "off", "pos", "reset", "rm", "run", "version"]
 
     options = []
 
@@ -1540,6 +1690,11 @@ def main():
         usage(0, options)
 
     if command=="version":
+        # this is weird, but handle remote target
+        if target and is_remote(tmap):
+            hmap = hosts[tmap["host"]]
+            do_remote_command_exec(hmap, tmap, command, options)
+
         print("ttc: version %d.%d.%d" % VERSION)
         sys.exit(0)
 
@@ -1717,7 +1872,11 @@ def main():
         do_set_config(tmap, outdir, options)
 
     if command=="cp":
-        do_copy(tmap, options)
+        if is_remote(tmap):
+            hmap = hosts[tmap["host"]]
+            do_remote_copy(hmap, tmap, options)
+        else:
+            do_copy(tmap, options)
 
     if command=="rm":
         do_rm(tmap, options)
