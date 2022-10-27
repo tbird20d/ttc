@@ -87,8 +87,8 @@ try:
 except:
     from commands import getstatusoutput
 
-# MAJOR, MINOR, REVISION
-VERSION = (2,1,2)
+# MAJOR, MINOR, REVISION (or PATCH)
+VERSION = (2,1,3)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -1291,8 +1291,8 @@ def do_remote_copy(hmap, tmap, objects):
         error_out("Invalid staging_dir '%s' found!! - aborting!!" % staging_dir, 7)
 
     cmd = " ".join(cmd_args)
-    #dprint("removing staging dir with cmd: '%s'" % cmd)
-    #(rcode, result) = getstatusoutput(cmd)
+    dprint("removing staging dir with cmd: '%s'" % cmd)
+    (rcode, result) = getstatusoutput(cmd)
     if result:
         print(result)
     if rcode != 0:
