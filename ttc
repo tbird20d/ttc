@@ -192,7 +192,10 @@ command_help = {
 """Usage: ttc help [<command>]
   If a command is specified, show the usage information for that command."""),
 
-"version":("Show version information and exit.",""),
+"version":("Show version information and exit.",
+"""Usage ttc [<board>] version
+  If a remote board is specified, then the version of ttc on the host for
+  that board is shown."""),
 
 "get_kernel":("Install kernel sources for target in the $KERNEL_SRC directory",
 """Usage: ttc [<target>] get_kernel [-o <outputdir>]
