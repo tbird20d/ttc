@@ -392,7 +392,7 @@ def read_config(config_path, optional=True):
         fl = open(config_path)
     except:
         if optional:
-            return {}
+            return ({}, {})
         else:
             error_out("Cannot open configuration file %s" % config_path, 3)
 
