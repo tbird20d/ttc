@@ -88,7 +88,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION
-VERSION = (2,1,1)
+VERSION = (2,1,2)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -625,7 +625,9 @@ def do_remote_command_exec(hmap, tmap, command, options):
 
     hostname = hmap.get("hostname", hmap["host"])
     full_target = tmap["target"]
-    remote_target = full_target.split(":")[1]
+    dprint("full_target='%s'" % full_target)
+    remote_target = full_target.split(":", 1)[1]
+    dprint("remote_target='%s'" % remote_target)
     ttc_has_debug = hmap.get("ttc_has_debug", "0")
     if ttc_has_debug in ["true", "True", "1"]:
         remote_ttc_has_debug = True
@@ -1165,7 +1167,7 @@ def do_remote_copy(hmap, tmap, objects):
 
     hostname = hmap.get("hostname", hmap["host"])
     full_target = tmap["target"]
-    remote_target = full_target.split(":")[1]
+    remote_target = full_target.split(":", 1)[1]
     ttc_has_debug = hmap.get("ttc_has_debug", "0")
     if ttc_has_debug in ["true", "True", "1"]:
         remote_ttc_has_debug = True
