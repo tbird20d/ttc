@@ -79,6 +79,7 @@
 
 import os, sys, string, re
 import shutil
+import shlex
 
 # handle missing routines from python2 or python3 modules
 try:
@@ -542,16 +543,25 @@ def do_list(targets, hosts):
     # (add host prefix to target, alias and real-board info)
     for host in hosts:
         dprint("reading data from host: %s" % host)
-        hostname = hosts[host].get("hostname", host)
+        hmap = hosts[host]
+        hostname = hmap.get("hostname", host)
 
-        # this list holds the a colon-delimited list of regular expression
+        # filter by target_pat_list, if specified
+        # target_pat_list holds the a colon-delimited list of regular expression
         # patterns for boards on this host to allow operations on
         # if no target_pat_list is defined, all boards are used
         # (ie, there is no filtering)
-        target_pat_list = hosts[host].get("target_pat_list", ".*")
+        target_pat_list = hmap.get("target_pat_list", ".*")
         tpats = target_pat_list.split(":")
 
-        cmd = "ssh %s ttc %s list" % (hostname, quiet_arg)
+        exec_cmd=hmap.get("exec_cmd", "/usr/bin/ssh")
+
+        exec_args_str=hmap.get("exec_args", "-t -q -o ConnectTimeout=2")
+        exec_args = shlex.split(exec_args_str)
+
+        cmd_args = [exec_cmd] + exec_args + [hostname, "ttc", quiet_arg, "list"]
+
+        cmd = " ".join(cmd_args)
         dprint("cmd=%s" % cmd)
         (rcode, result) = getstatusoutput(cmd)
         dprint("rcode=%d" % rcode)
@@ -612,8 +622,6 @@ def is_remote(tmap):
 
 def do_remote_command_exec(hmap, tmap, command, options):
     global quiet, debug, verbose
-
-    import shlex
 
     hostname = hmap.get("hostname", hmap["host"])
     full_target = tmap["target"]
@@ -772,7 +780,6 @@ def do_run(tmap, options):
     global verbose
     global quiet
     global debug
-    import shlex
 
     cmd_to_run = " ".join(options)
     # um, we just lost all quoting
@@ -1146,7 +1153,6 @@ def do_copy(tmap, objects):
 def do_remote_copy(hmap, tmap, objects):
     global quiet, debug, verbose
 
-    import shlex
     import random
 
     dprint("in do_remote_copy")
@@ -1487,6 +1493,11 @@ def main():
     if LOG_ENV_VAR in os.environ:
         do_log_init()
 
+
+    # check for debug early
+    if "--debug" in sys.argv:
+        debug = True
+
     # read target information file for this host
     if os.path.exists(fuego_conf):
         targets, hosts = read_config(fuego_conf)
@@ -1578,13 +1589,22 @@ def main():
     remote_targets = []
     for host in hosts:
         dprint("reading data from host: %s" % host)
-        hostname = hosts[host].get("hostname", host)
+        hmap = hosts[host]
+        hostname = hmap.get("hostname", host)
 
         # filter by target_pat_list, if specified
-        target_pat_list = hosts[host].get("target_pat_list", ".*")
+        target_pat_list = hmap.get("target_pat_list", ".*")
         tpats = target_pat_list.split(":")
 
-        cmd = "ssh %s ttc -q list" % hostname
+        exec_cmd=hmap.get("exec_cmd", "/usr/bin/ssh")
+
+        exec_args_str=hmap.get("exec_args", "-t -q -o ConnectTimeout=2")
+        exec_args = shlex.split(exec_args_str)
+
+        cmd_args = [exec_cmd] + exec_args + [hostname, "ttc", "-q", "list"]
+
+        cmd = " ".join(cmd_args)
+
         dprint("cmd=%s" % cmd)
         (rcode, result) = getstatusoutput(cmd)
         dprint("rcode=%d" % rcode)
