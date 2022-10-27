@@ -132,11 +132,11 @@ setup() {
     echo "subbar2" >$SEND_DIR/subdir2/subbar2
     echo "subbar2" >$SEND_DIR/subdir2/sub2subdir1/subbar2
 
-    dd if=/dev/random of=$SEND_DIR/random-data bs=1024 count=10 >/dev/null 2>&1
+    dd if=/dev/urandom of=$SEND_DIR/random-data bs=1024 count=10 >/dev/null 2>&1
 }
 
 setup2() {
-    dd if=/dev/random of=$SEND_DIR/big-random-data bs=1024 count=1024 >/dev/null 2>&1
+    dd if=/dev/urandom of=$SEND_DIR/big-random-data bs=1024 count=1024 >/dev/null 2>&1
 }
 
 cleanup() {
@@ -335,7 +335,7 @@ fi
 rm -rf $RECV_DIR
 mkdir -p $RECV_DIR
 
-desc="get multiple directories recursively to a dir"
+desc="get multiple dirs recursively to a dir"
 if [ "$FILE_COUNT" != 2 ] ; then
     # do a skip
     fail "$desc" "SKIP - missing file for test"
@@ -365,6 +365,7 @@ else
 fi
 
 #--------------------------------------------
+echo "# Setting up for benchmark tests"
 
 setup2
 
