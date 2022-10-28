@@ -88,7 +88,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,1,3)
+VERSION = (2,1,4)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -1482,6 +1482,45 @@ def do_log(command, tmap, options):
         target = tmap["target"]
         logger.debug('ttc %s %s' % (target, command))
 
+def get_remote_targets(hosts):
+    # get target names from configured hosts
+    remote_targets = []
+    for host in hosts:
+        dprint("reading data from host: %s" % host)
+        hmap = hosts[host]
+        hostname = hmap.get("hostname", host)
+
+        # filter by target_pat_list, if specified
+        target_pat_list = hmap.get("target_pat_list", ".*")
+        tpats = target_pat_list.split(":")
+
+        exec_cmd=hmap.get("exec_cmd", "/usr/bin/ssh")
+
+        exec_args_str=hmap.get("exec_args", "-t -q -o ConnectTimeout=2")
+        exec_args = shlex.split(exec_args_str)
+
+        cmd_args = [exec_cmd] + exec_args + [hostname, "ttc", "-q", "list"]
+
+        cmd = " ".join(cmd_args)
+
+        dprint("cmd=%s" % cmd)
+        (rcode, result) = getstatusoutput(cmd)
+        dprint("rcode=%d" % rcode)
+        if rcode != 0:
+            print_error("problem reading targets from host %s" % host)
+            continue
+
+        for line in result.split('\n'):
+            dprint("line=%s" % line)
+            parts = line.strip().split(" ")
+            target = parts[0]
+            full_target = host+":"+target
+            remote_targets.append(full_target)
+
+    dprint("remote_targets=%s" % str(remote_targets))
+    return remote_targets
+
+
 def main():
     global verbose
     global quiet
@@ -1494,7 +1533,6 @@ def main():
     # do logging to syslog, if user sets the logging environment variable
     if LOG_ENV_VAR in os.environ:
         do_log_init()
-
 
     # check for debug early
     if "--debug" in sys.argv:
@@ -1587,43 +1625,7 @@ def main():
                         targets[tname][key] = attr
                         attribute_added=1
 
-    # also get target names from configured hosts
-    remote_targets = []
-    for host in hosts:
-        dprint("reading data from host: %s" % host)
-        hmap = hosts[host]
-        hostname = hmap.get("hostname", host)
-
-        # filter by target_pat_list, if specified
-        target_pat_list = hmap.get("target_pat_list", ".*")
-        tpats = target_pat_list.split(":")
-
-        exec_cmd=hmap.get("exec_cmd", "/usr/bin/ssh")
-
-        exec_args_str=hmap.get("exec_args", "-t -q -o ConnectTimeout=2")
-        exec_args = shlex.split(exec_args_str)
-
-        cmd_args = [exec_cmd] + exec_args + [hostname, "ttc", "-q", "list"]
-
-        cmd = " ".join(cmd_args)
-
-        dprint("cmd=%s" % cmd)
-        (rcode, result) = getstatusoutput(cmd)
-        dprint("rcode=%d" % rcode)
-        if rcode != 0:
-            print_error("problem reading targets from host %s" % host)
-            continue
-
-        for line in result.split('\n'):
-            dprint("line=%s" % line)
-            parts = line.strip().split(" ")
-            target = parts[0]
-            full_target = host+":"+target
-            remote_targets.append(full_target)
-
-    dprint("remote_targets=%s" % str(remote_targets))
-
-    if not targets and not remote_targets:
+    if not targets:
         error_out("No valid targets were specified in any config file.\nHere is help on valid config files and locations:\n\n%s" % command_help["vars"][1], 3)
 
     # parse arguments
@@ -1692,18 +1694,21 @@ def main():
             if verbose:
                 print("Using target: " + target)
             continue
-        if arg in remote_targets:
-            target = arg
-            if verbose:
-                print("Using target: " + target)
-            # synthesize a tmap for this target
-            host = target.split(":")[0]
-            tmap = {"target": target, "host": host}
-            targets[target] = tmap
-            continue
         if arg in list(target_alias.keys()):
             target = target_alias[arg]
             continue
+
+        if not target:
+            remote_targets = get_remote_targets(hosts)
+            if arg in remote_targets:
+                target = arg
+                if verbose:
+                    print("Using target: " + target)
+                # synthesize a tmap for this target
+                host = target.split(":")[0]
+                tmap = {"target": target, "host": host}
+                targets[target] = tmap
+                continue
 
         options.append(arg)
 
