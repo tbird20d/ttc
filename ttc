@@ -88,7 +88,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,1,4)
+VERSION = (2,2,0)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -571,12 +571,16 @@ def do_list(targets, hosts):
             continue
 
         lines = result.split('\n')
-        if not quiet:
-            # remove title from remote results
-            del(lines[0])
 
         for line in lines:
             dprint("line=%s" % line)
+            # skip non-target lines
+            if line.startswith("Error:"):
+                continue
+            if line.startswith("Targets:"):
+                continue
+            if line.startswith("DEBUG:"):
+                continue
             parts = line.strip().split(" ")
             target = parts[0]
             full_target = host + ":" + target
