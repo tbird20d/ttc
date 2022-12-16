@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.2.0  - Support duration option for ttc reserve
 #  2.1.1  - Support TTC_TARGET for remote targets (after ttc setenv)
 #  2.1.0  - Add support for federated ttc hosts.  This means ttc can
 #           transparently support operations on a board on a remote host.
@@ -80,6 +81,8 @@
 import os, sys, string, re
 import shutil
 import shlex
+import time
+import datetime
 
 # handle missing routines from python2 or python3 modules
 try:
@@ -152,17 +155,28 @@ command_help = {
   Use '-f' to force releasing the reservation of another user."""),
 
 "reserve":("Reserve a target for use.",
-"""Usage: ttc [<target>] reserve [-f]
-  Reserve a target for use indefinitely.  This puts a lock file in place
+"""Usage: ttc [<target>] reserve [-f] [<duration-str>]
+  Reserve a target for use.  This puts a lock file in place
   to advise other users that you are using the board.  Use 'ttc release'
   to remove the reservation.  If '-f' (force) is specified, then
-  release any prior reservation."""),
+  release any prior reservation.
 
-#"reserve":("Reserve a target for use (now or in the future) (not implemented yet)",
-#"""Usage: ttc [<target>] reserve [<duration>[m|h|d]] [-s <start-time>]
-#  If duration is omitted, the target is reserved indefinitely.
+  An optional duration may be specified.  If duration-str is omitted,
+  the target is reserved for 4 hours.
+
+  <duration-str> is a string of the form: xxhyym where xx is the
+  number of hours and yy is the number of minutes.  Either hours
+  or minutes may be omitted.  ex: 1h30m = 90 minute reservation
+  ex: 15m = 15 minute reservation."""),
+
+#"""Usage: ttc [<target>] reserve [<duration-str>] [-s <start-time>]
+#  ...
+#  A target may define a default duration.  "forever" means the
+#  duration lasts indefinitely (does not expire automatically,
+#  after a period of time)
+#
 #  if start-time is omitted, starting time is now.
-#  Use a duration of 0 to cancel a reservation.
+#  Use a duration of 0 to cancel a reservation in the future.
 #"""),
 
 "status":("Show status of target, including reservations.",
@@ -655,6 +669,9 @@ def do_remote_command_exec(hmap, tmap, command, options):
 
     # add command arguments
     for opt in options:
+        if " " in opt:
+            if not opt.startswith('"'):
+                opt = '"' + opt + '"'
         cmd_args.append(opt)
 
     # show what we're about to do
@@ -877,11 +894,14 @@ def power_status(tmap):
 
         return pos_str
 
-# returns one of: 'RESPONSIVE', 'NONRESPONSIVE'
+# returns one of: 'RESPONSIVE', 'NONRESPONSIVE', 'UNKNOWN'
 def network_status(tmap):
-        rcode, result = getstatusoutput( \
-                "ping -c 5 -i 0.3 -W 1 %s" % tmap["ip_addr"])
+        ip_addr = tmap.get("ip_addr", "")
+        if not ip_addr:
+            print("Warning: missing ip_addr attriute for target '%s'" % tmap["target"])
+            return "UNKNOWN"
 
+        rcode, result = getstatusoutput("ping -c 5 -i 0.3 -W 1 %s" % ip_addr)
         if rcode==0:
             return "RESPONSIVE"
         else:
@@ -889,8 +909,15 @@ def network_status(tmap):
 
 # returns one of: 'OPERATIVE', 'INOPERATIVE'
 def command_status(tmap):
+        # even users who don't have a reservation can check the status
+        # of a target
+
+        # use --no-check to avoid checking the reservation
         rcode, result = getstatusoutput( \
-                'ttc %s run echo \"hello response\"' % tmap["target"])
+                'ttc --debug --no-check %s run echo \"hello response\"' % tmap["target"])
+
+        # FIXTHIS - not sure what to do if user doesn't have reservation
+        # this returns INOPERATIVE, because ttc run fails
 
         m = re.search(r"hello response", result)
         if m:
@@ -900,6 +927,9 @@ def command_status(tmap):
 
 def do_status(tmap):
     target = tmap["target"]
+
+    # this might clear an expired reservation
+    res = get_reservation(tmap)
 
     print("Status for target: %s" % target)
 
@@ -915,11 +945,11 @@ def do_status(tmap):
 
     # show who is currently using target
     res = get_reservation(tmap)
-    if res[0]:
-        print("User %s currently has '%s' reserved." % (res[0], target))
-        print("Reservation began at: %s" % res[1])
+    if res:
+        print(res.get_str())
     else:
         print("Target board is not reserved.")
+    sys.exit(0)
 
     # FIXTHIS - should report:
     #    future reservations for target?
@@ -1317,8 +1347,6 @@ def do_rm(tmap, objects):
 
 
 def do_wait_for(tmap, options):
-    import time
-
     interval = 5
     # 99999 seconds is a little over 27 hours
     timeout = 99999
@@ -1346,6 +1374,49 @@ def do_wait_for(tmap, options):
     print()
     sys.exit(rcode)
 
+class reservation_class:
+    def __init__(self, target, user, start_time):
+        self.target = target
+        self.user = user
+        self.start_time = start_time
+        return
+
+    def get_str(self):
+        return """User '%s' currently has '%s' reserved."
+  Reservation began at: %s
+  Reservation will end: %s""" % \
+    (self.user, self.target, self.start_time, self.end_time)
+
+
+# return True if target is still reserved
+def check_for_reservation_expiry(rmap, tmap):
+    # check for reservation expiration
+    end_time_str = rmap.get("end_time", "unknown")
+
+    if end_time_str not in ["never", "unknown", "0-0-0_0:0:0"]:
+        try:
+            end_time = datetime.datetime.strptime(end_time_str, "%Y-%m-%d_%H:%M:%S")
+        except ValueError:
+            print("Warning: invalid reservation end_time of '%s' in reservation file" % end_time_str)
+
+    now = datetime.datetime.now()
+    if now > end_time:
+        rfile = rmap["rfile"]
+        try:
+            os.unlink(rfile)
+        except:
+            print("Problem removing reservation file: %s" % rfile)
+
+        # also, execute the release_cmd, if any
+        if "release_cmd" in tmap:
+            exec_command(tmap, "release")
+
+        return False
+
+    # target is still reserved
+    return True
+
+
 def get_reservation(tmap):
     try:
         real_board = tmap["real_board"]
@@ -1354,34 +1425,100 @@ def get_reservation(tmap):
     rfile = rfile_fmt % (lockdir, real_board)
     reserved = os.path.isfile(rfile)
 
-    if reserved:
-        # reservation file exists, read it for details
-        temp_targets, temp_hosts = read_config(rfile, optional=False)
-        trec = temp_targets[real_board]
-        RES_USER = trec["USER"]
-        start_time = trec["start_time"]
+    if not reserved:
+        return None
 
-        return((RES_USER, start_time))
-    else:
-        return((None, None))
+    # reservation file exists, read it for details
+    temp_targets, temp_hosts = read_config(rfile, optional=False)
+    rmap = temp_targets[real_board]
+    rmap["rfile"] = rfile
+
+    # check for reservation expiration
+    reserved = check_for_reservation_expiry(rmap, tmap)
+    if not reserved:
+        return None
+
+    res = reservation_class(real_board, rmap["user"], rmap["start_time"])
+    res.rfile = rfile
+    res.duration = rmap["duration"]
+    res.end_time = rmap["end_time"]
+    return res
 
 # check the reservation for a target board
+# returns if the user can access the board
+# does not return if there's a reservation, not by this user
 def check_reservation(tmap, command):
+    dprint("Checking reservation")
     target = tmap["target"]
     res = get_reservation(tmap)
 
     # if there's a reservation, and it's not mine, error out
-    if res[0] and not res[0]==os.environ["USER"]:
+    if res and not res.user == os.environ["USER"]:
         print("Error: Can't perform command '%s'" % command)
-        print("User %s currently has '%s' reserved." % \
-            (res[0], target))
-        print("Reservation began at: "+res[1])
+        print(res.get_str())
         sys.exit(1)
 
-def do_reserve(tmap, options):
-    import time
+# parse duration string in the form of: xxhyym
+# returns number of minutes, or
+#   0 on parse error
+def parse_time_str(ts):
+    minutes = 0
+    if ('h' not in ts) and ('m' not in ts):
+        return 0
 
-    # create lock directory, if it doesn't exist
+    if 'h' in ts:
+        hours, rest = ts.split('h', 1)
+        if not re.match("^[0-9]+$", hours):
+            return 0
+        minutes += int(hours) * 60
+        ts = rest
+
+    if 'm' in ts:
+        mins, rest = ts.split('m', 1)
+        if rest:
+            # 'm', if present, should be last element of string
+            # if something follows 'm', it's an error
+            return 0
+
+        if not re.match("^[0-9]+$", mins):
+            return 0
+        minutes += int(mins)
+
+    if rest:
+        return 0
+
+    return minutes
+
+
+def do_reserve(tmap, options):
+    req_start_time = "now"
+    duration = "default"
+    # handle -f (force) option
+    force = 0
+    if "-f" in options:
+        force = 1
+        options.remove("-f")
+
+    # pasrse duration and start-time arguments
+    while len(options):
+        option = options[0]
+        if option == "--start-time" or option == "-s":
+            del options[0]
+            try:
+                start_time = options[1]
+            except IndexError:
+                error_out("Missing start time for '--start-time' option")
+            del options[0]
+            del options[0]
+        else:
+            # interpret free arg duration, but check if one was already set
+            if duration != "default":
+                error_out("Unknown option '%s' for reserve command\nDuration already specified as '%s'" % (options[0], duration), 1)
+
+            duration = options[0]
+            del options[0]
+
+    # create lock (reservations)  directory, if it doesn't exist
     if not os.path.isdir(lockdir):
         os.mkdir(lockdir)
         os.chmod(lockdir, 0o777)
@@ -1391,53 +1528,74 @@ def do_reserve(tmap, options):
         real_board = tmap["real_board"]
     except:
         real_board = target
-    USER=os.environ["USER"]
-    start_time=time.strftime("%Y-%m-%d_%H:%M:%S")
+    user=os.environ["USER"]
 
-    # handle -f (force) option
-    force = 0
-    if "-f" in options:
-        force = 1
+    # calculate end_time
+    if duration == "default":
+        duration = "4h"
 
-    # check for reservations file
-    rfile = rfile_fmt % (lockdir, real_board)
+    duration_minutes = parse_time_str(duration)
+    if not duration_minutes:
+        error_out("Invalid duration of '%s' specified" % duration, 1)
 
-    if not os.path.isfile(rfile) or force:
-        try:
-            f = open(rfile, "w")
-            f.write("target=%s\n" % real_board)
-            f.write("target_alias=%s\n" % target)
-            f.write("USER=%s\n" % USER)
-            f.write("start_time=%s\n" % start_time)
-            f.write("last_ttc_time=%s\n" % start_time)
-            f.close()
-        except:
-            error_out("Could not create reservation file %s" % rfile, 5)
-
-        try:
-            os.chmod(rfile, 0o777)
-        except:
-            print("Could not chmod reservation file %s" % rfile)
-
-        # also, execute the reserve_cmd, if any
-        if "reserve_cmd" in tmap:
-            exec_command(tmap, "reserve")
-        print("Target board '%s' is reserved for user %s" % (target, USER))
+    if req_start_time == "now":
+        start_time = datetime.datetime.now()
+        start_time_str = time.strftime("%Y-%m-%d_%H:%M:%S")
     else:
-        res = get_reservation(tmap)
-        if USER==res[0]:
+        # FIXTHIS - support future reservations
+        # add to reservation queue, instead of current reservation
+        error_out("Future reservations are not supported yet!", 1)
+
+    delta_minutes = datetime.timedelta(minutes=int(duration_minutes))
+    end_time = start_time + delta_minutes
+    end_time_str = end_time.strftime("%Y-%m-%d_%H:%M:%S")
+
+    # check for existing reservation
+    res = get_reservation(tmap)
+
+    if res:
+       if user == res.user:
             print("You already have '%s' reserved." % target)
-        else:
+            # FIXTHIS - allow user to extend duration here?
+            sys.exit(0)
+       if not force:
             print("Error: Can't reserve '%s'" % target)
-            print("User %s currently has '%s' reserved." % (res[0], target))
-            print("Reservation began at: %s" % res[1])
+            print(res.get_str())
+            sys.exit(1)
+
+    # create a new reservation file
+    # this might overwrite an old reservation file, if we're doing a force
+    rfile = rfile_fmt % (lockdir, real_board)
+    try:
+        f = open(rfile, "w")
+        f.write("target=%s\n" % real_board)
+        f.write("target_alias=%s\n" % target)
+        f.write("user=%s\n" % user)
+        f.write("start_time=%s\n" % start_time_str)
+        f.write("duration=%s\n" % duration)
+        f.write("end_time=%s\n" % end_time_str)
+        f.write("last_ttc_time=%s\n" % start_time_str)
+        f.close()
+    except:
+        error_out("Could not create reservation file %s" % rfile, 5)
+
+    try:
+        os.chmod(rfile, 0o777)
+    except:
+        print("Could not chmod reservation file %s" % rfile)
+
+    # also, execute the reserve_cmd, if any
+    if "reserve_cmd" in tmap:
+        exec_command(tmap, "reserve")
+
+    print("Target board '%s' is reserved for user '%s'" % (target, user))
     sys.exit(0)
 
 def do_release(tmap, options):
     res = get_reservation(tmap)
 
     target = tmap["target"]
-    if not res[0]:
+    if not res:
         print("No reservation found for '%s'" % target)
         sys.exit(1)
 
@@ -1446,9 +1604,9 @@ def do_release(tmap, options):
         force = 1
 
     # cannot remove someone else's reservation, unless forced
-    if res[0]!=os.environ["USER"] and not force:
+    if res.user != os.environ["USER"] and not force:
         print("Error: Can't release reservation for '%s'" % target)
-        print("User %s has the reservation." % res[0])
+        print("User %s has the reservation." % res.user)
         print("Use 'ttc release -f' to force the release of the reservation.")
         sys.exit(1)
 
@@ -1457,11 +1615,20 @@ def do_release(tmap, options):
     except:
         real_board = tmap["target"]
     rfile = rfile_fmt % (lockdir, real_board)
+
+    # FIXTHIS - check for next reservation, instead of just deleting file
+
     try:
         os.unlink(rfile)
     except:
         print("Problem removing reservation file: %s" % rfile)
-    print("Released reservation for user %s for target '%s'" % (res[0], target))
+
+    # also, execute the release_cmd, if any
+    if "release_cmd" in tmap:
+        exec_command(tmap, "release")
+
+    print("Released reservation for user %s for target '%s'" % (res.user, target))
+    sys.exit(0)
 
 
 import logging, logging.handlers
@@ -1652,6 +1819,7 @@ def main():
     quiet = 0
     verbose = 0
     use_statusoutput = 0
+    check_reservation_flag = True
     # find command, target, and any arguments
     for i in range(1,len(sys.argv)):
         arg = sys.argv[i]
@@ -1666,6 +1834,9 @@ def main():
             continue
         if arg=="--debug":
             debug = True
+            continue
+        if arg=="--no-check":
+            check_reservation_flag = False
             continue
         if arg == "run":
             # stop processing arguments
@@ -1715,6 +1886,8 @@ def main():
                 continue
 
         options.append(arg)
+
+    dprint("command='%s', options='%s'" % (command, options))
 
     if command=="help" or command=="--help" or command=="-h":
         usage(0, options)
@@ -1800,7 +1973,7 @@ def main():
     do_log(command, tmap, options)
 
     # all non-target commands have been handled
-    if command in board_mod_commands:
+    if command in board_mod_commands and check_reservation_flag:
         check_reservation(tmap, command)
 
     if is_remote(tmap) and command in easy_remote_commands:
@@ -1828,7 +2001,6 @@ def main():
         exec_command(tmap, command)
         if (command=="reset" or command=="reboot") and \
             ("-w" in options):
-            import time
             try:
                 reset_delay = int(tmap["reset_delay"])
             except:
