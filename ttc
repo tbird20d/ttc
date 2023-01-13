@@ -78,7 +78,7 @@
 #          Support hidden config blocks (starting with a dot)
 #  0.9.7 - 2008-05-12 Support inheritance using the inherit_from attribute
 
-import os, sys, string, re
+import os, sys, re
 import shutil
 import shlex
 import time
@@ -327,6 +327,12 @@ def dprint(msg):
     global debug
     if debug:
         print("DEBUG: " + msg)
+
+def vprint(msg):
+    # show a message if we're in verbose mode
+    global verbose
+    if verbose:
+        print(msg)
 
 def usage(rcode, options=[]):
     command = ""
@@ -1035,6 +1041,99 @@ def do_setenv(tmap, options=[]):
         print("Use 'exit' to exit the sub-shell.")
         os.system("/bin/bash")
 
+def do_get_kernel(tmap, hosts, options):
+    global debug
+
+    # set directory to output kernel to
+    if "-o" in options:
+        # override the KERNEL_SRC directory in the environment
+        try:
+            outdir = options[options.index("-o")+1]
+        except IndexError:
+            error_out("Missing argument for -o option", 1)
+    else:
+        outdir = "linux"
+
+    # handle local operation
+    if not is_remote(tmap):
+        os.environ["KERNEL_SRC"] = outdir
+        exec_command(tmap, command)
+        return
+
+    # target is remote: do get_kernel on host, then copy to local dir
+    hmap = hosts[tmap["host"]]
+
+    dprint("in do_get_kernel (remote)")
+
+    # outline of remote operations:
+    #   do (on host) 'ttc <target> get_kernel -o staging_dir'
+    #   then 'scp host:<staging_dir> outdir'
+    #   then (on host) 'rm -rf staging_dir'
+
+    hostname = hmap.get("hostname", hmap["host"])
+    full_target = tmap["target"]
+    remote_target = full_target.split(":", 1)[1]
+    ttc_has_debug = hmap.get("ttc_has_debug", "0")
+    if ttc_has_debug in ["true", "True", "1"]:
+        remote_ttc_has_debug = True
+    else:
+        remote_ttc_has_debug = False
+
+    exec_cmd=hmap.get("exec_cmd", "/usr/bin/ssh")
+    exec_args_str=hmap.get("exec_args", "-t -q -o ConnectTimeout=2")
+    exec_args = shlex.split(exec_args_str)
+
+    # set ttc global args for remote ttc operation
+    extra_ttc_args = []
+    if remote_ttc_has_debug and debug:
+        extra_ttc_args.append("--debug")
+
+    # set staging dir name
+    import random
+    uid = random.randint(0,100000)
+    staging_dir = "/tmp/ttc-gk-staging-%06d" % uid
+
+    # do 'ttc <target> get_kernel -o <staging_dir>'
+    cmd_args = [exec_cmd] + exec_args + [hostname, "ttc"] + extra_ttc_args + \
+       [remote_target, "get_kernel", "-o", staging_dir]
+
+    cmd = " ".join(cmd_args)
+    dprint("get_kernel into host staging dir with cmd: '%s'" % cmd)
+    vprint("Getting kernel for target '%s' on remote host '%s'" % (remote_target, tmap["host"]))
+    rcode = os.system(cmd)
+    if rcode != 0:
+        error_out("Problem getting kernel using remote copy operation, on host '%s'" % hostname, 7)
+
+    # use hosts copy_from_cmd to retrieve the staging dir
+    copy_from_cmd = hmap.get("copy_from_cmd",
+        "scp -r -q %(copy_args)s %(hostname)s:%(src)s %(dest)s")
+
+    # now copy from host staging dir to local dest
+    cp_dict = {"hostname": hostname, "src":staging_dir, "dest": outdir, "copy_args": ""}
+    cmd = copy_from_cmd % cp_dict
+    dprint("copying staging dir from host to dest with cmd: '%s'" % cmd)
+    vprint("Copying kernel from host '%s' to directory '%s'" % (tmap["host"], outdir))
+    rcode = os.system(cmd)
+    if rcode != 0:
+        error_out("Problem copying '%s' from staging dir on host %s to target" % (src, hostname), 7)
+
+    # remove staging dir (be very careful with the path here!!)
+    vprint("Removing staging directory on host")
+    cmd_args = [exec_cmd] + exec_args + [hostname, "rm", "-rf", staging_dir]
+
+    # double-check staging dir (make sure the path is not bogus)
+    if " " in staging_dir or not staging_dir.startswith("/tmp"):
+        error_out("Invalid staging_dir '%s' found!! - aborting!!" % staging_dir, 7)
+
+    cmd = " ".join(cmd_args)
+    dprint("removing staging dir with cmd: '%s'" % cmd)
+    rcode = os.system(cmd)
+    if rcode != 0:
+        error_out("Problem removing staging directory for remote copy operation, on host '%s'" % hostname, 7)
+
+    return
+
+
 def config_val(op, config, value, line):
     if op=="y" or op=="m" or op=="1" or op=="s":
         new_val = "%s=%s\n" % (config, value)
@@ -1507,7 +1606,7 @@ def do_reserve(tmap, options):
             try:
                 start_time = options[1]
             except IndexError:
-                error_out("Missing start time for '--start-time' option")
+                error_out("Missing start time for '--start-time' option", 1)
             del options[0]
             del options[0]
         else:
@@ -1897,7 +1996,7 @@ def main():
         usage(0, options)
 
     if command=="version":
-        # this is weird, but handle remote target
+        # this is weird, but handle version for ttc for remote target
         if target and is_remote(tmap):
             hmap = hosts[tmap["host"]]
             do_remote_command_exec(hmap, tmap, command, options)
@@ -2020,14 +2119,7 @@ def main():
         do_setenv(tmap, options)
 
     if command=="get_kernel":
-        # set directory to output kernel to (or place config in)
-        if "-o" in options:
-            # override the KERNEL_SRC directory in the environment
-            # FIXTHIS - this arg parsing is not robust
-            outdir = options[options.index("-o")+1]
-            os.environ["KERNEL_SRC"] = outdir
-
-        exec_command(tmap, command)
+        do_get_kernel(tmap, hosts, options)
         sys.exit(0)
 
     if command=="run":
