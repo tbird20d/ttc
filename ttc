@@ -91,7 +91,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,2,0)
+VERSION = (2,2,1)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -777,7 +777,9 @@ def exec_command(tmap, command, use_system=1):
         saved_cmd = full_cmd
         # execute full_cmd
         if use_system and not use_statusoutput:
-            rcode = os.system(full_cmd)
+            syscode = os.system(full_cmd)
+            rcode = os.WEXITSTATUS(syscode)
+            # signal = syscode & 0xff
             full_cmd = ""
             result = ""
         else:
