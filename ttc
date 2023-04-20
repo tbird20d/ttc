@@ -83,6 +83,7 @@ import shutil
 import shlex
 import time
 import datetime
+import fnmatch
 
 # handle missing routines from python2 or python3 modules
 try:
@@ -104,6 +105,7 @@ debug = False
 
 # keep configuration file in /etc
 system_config_dir = "/etc"
+system_config_d_dir = system_config_dir + "/ttc.conf.d"
 fuego_config_dir = "/fuego-ro/conf"
 user_config_dir = os.path.expanduser("~/.config")
 CONFIG_FILE = "ttc.conf"
@@ -1801,6 +1803,7 @@ def main():
     global quiet
     global use_statusoutput
     global debug
+    global system_conf
 
     if len(sys.argv)<2:
         error_out('Missing command\nUse "ttc help" to get usage help.', 1)
@@ -1817,7 +1820,26 @@ def main():
     if os.path.exists(fuego_conf):
         targets, hosts = read_config(fuego_conf)
     else:
-        targets, hosts = read_config(system_conf)
+        if os.path.exists(system_conf):
+            targets, hosts = read_config(system_conf)
+        # read target information file from config_dir_d
+        if os.path.isdir(system_config_d_dir):
+            system_confs=filter(lambda x: fnmatch.fnmatch(x,'*.conf'), os.listdir(system_config_d_dir))
+            for system_conf in sorted(system_confs):
+                system_targets, system_hosts = read_config(system_config_d_dir + "/" + system_conf)
+                for tname in list(system_targets.keys()):
+                    tmap = system_targets[tname]
+                    if tname in targets:
+                        # if already present, merge the system info
+                        targets[tname].update(tmap)
+                    else:
+                        targets[tname] = tmap
+                for hname in list(system_hosts.keys()):
+                    hmap = system_hosts[hname]
+                    if hname in hosts:
+                       hosts[hname].update(hmap)
+                    else:
+                       hosts[hname] = hmap
 
     # merge info from user config, if present
     if os.path.exists(user_conf):
