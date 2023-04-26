@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.2.3  - Support /etc/ttc.conf.d directory (individual .conf files)
 #  2.2.0  - Support duration option for ttc reserve
 #  2.1.1  - Support TTC_TARGET for remote targets (after ttc setenv)
 #  2.1.0  - Add support for federated ttc hosts.  This means ttc can
@@ -83,7 +84,6 @@ import shutil
 import shlex
 import time
 import datetime
-import fnmatch
 
 # handle missing routines from python2 or python3 modules
 try:
@@ -92,7 +92,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,2,2)
+VERSION = (2,2,3)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -105,10 +105,10 @@ debug = False
 
 # keep configuration file in /etc
 system_config_dir = "/etc"
-system_config_d_dir = system_config_dir + "/ttc.conf.d"
 fuego_config_dir = "/fuego-ro/conf"
 user_config_dir = os.path.expanduser("~/.config")
 CONFIG_FILE = "ttc.conf"
+d_dir = "ttc.conf.d"
 
 system_conf = system_config_dir + "/" + CONFIG_FILE
 fuego_conf = fuego_config_dir + "/" + CONFIG_FILE
@@ -313,14 +313,15 @@ See the code for the meaning and usage of each of these variables.
 The order of reading configuration values is:
  1. read the global config file (%s)
     or, the fuego config file, if present (%s)
- 2. read the user config file (%s)
- 3. read a local config file (if specified by %s)
- 4. read environment variables
+ 2. read files from the global config dir (%s/%s)
+ 3. read the user config file (%s)
+ 4. read a local config file (if specified by %s)
+ 5. read environment variables
 
 Values specified in the local config file override values in the global config
 file, and values in the environment override values in either config file.
 """ % (TARGET_ENV_VAR, LOCAL_CONF_ENV_VAR, LOG_ENV_VAR,
-       system_conf, fuego_conf, user_conf,
+       system_conf, fuego_conf, system_conf, d_dir, user_conf,
        LOCAL_CONF_ENV_VAR )),
 }
 
@@ -531,6 +532,55 @@ def read_config(config_path, optional=True):
     #print("targets="+str(targets))
     #print("hosts="+str(hosts))
     return (targets, hosts)
+
+# read the config files from a specified directory
+# This reads a group of conf files from conf_dir+"/ttc.conf.d"
+# and the individual conf file conf_dir+"/ttc.conf"
+#
+# returns 2 maps: targets and hosts
+# targets is a map of maps, with target attributes in subsidiary maps
+# hosts is a map of maps, with host attributes in subsidiary maps
+def read_conf_dir(conf_dir, targets, hosts):
+    # get sorted list of conf files in d_dir (e.g. /etc/ttc.conf.d)
+    config_d_dir = conf_dir + "/" + d_dir
+    if os.path.exists(config_d_dir):
+        conf_paths = [config_d_dir + "/" + f for f in os.listdir(config_d_dir) if f.endswith(".conf")]
+        conf_paths.sort()
+    else:
+        conf_paths = []
+
+    # also get single conf file (e.g. /etc/ttc.conf) ; parse it first
+    conf_path = conf_dir + "/" + CONFIG_FILE
+    if os.path.exists(conf_path):
+        conf_paths.insert(0, conf_path)
+
+    for conf_path in conf_paths:
+        new_targets, new_hosts = read_config(conf_path)
+        for tname in list(new_targets.keys()):
+            tmap = new_targets[tname]
+            if tname in targets:
+                # if already present, merge the system info
+                targets[tname].update(tmap)
+                ttc_conf_file = targets[tname]["ttc_conf_file"]
+                ttc_conf_file += (", " + conf_path)
+                targets[tname]["ttc_conf_file"] = ttc_conf_file
+            else:
+                tmap["ttc_conf_file"] = conf_path
+                targets[tname] = tmap
+
+        for hname in list(new_hosts.keys()):
+            hmap = new_hosts[hname]
+            if hname in hosts:
+                hosts[hname].update(hmap)
+                ttc_conf_file = hosts[hname]["ttc_conf_file"]
+                ttc_conf_file += (", " + conf_path)
+                hosts[hname]["ttc_conf_file"] = ttc_conf_file
+            else:
+                hmap["ttc_conf_file"] = conf_path
+                hosts[hname] = hmap
+
+    return targets, hosts
+
 
 def do_list(targets, hosts):
     global quiet, verbose
@@ -1816,77 +1866,26 @@ def main():
     if "--debug" in sys.argv:
         debug = True
 
+    targets = {}
+    hosts = {}
     # read target information file for this host
     if os.path.exists(fuego_conf):
-        targets, hosts = read_config(fuego_conf)
+        # the file /fuego/ro/conf/ttc.conf must exist, in order to parse
+        # /fuego/ro/conf/ttc.conf.d/*.conf files
+        targets, hosts = read_conf_dir(fuego_config_dir, targets, hosts)
     else:
-        if os.path.exists(system_conf):
-            targets, hosts = read_config(system_conf)
-        # read target information file from config_dir_d
-        if os.path.isdir(system_config_d_dir):
-            system_confs=filter(lambda x: fnmatch.fnmatch(x,'*.conf'), os.listdir(system_config_d_dir))
-            for system_conf in sorted(system_confs):
-                system_targets, system_hosts = read_config(system_config_d_dir + "/" + system_conf)
-                for tname in list(system_targets.keys()):
-                    tmap = system_targets[tname]
-                    if tname in targets:
-                        # if already present, merge the system info
-                        targets[tname].update(tmap)
-                    else:
-                        targets[tname] = tmap
-                for hname in list(system_hosts.keys()):
-                    hmap = system_hosts[hname]
-                    if hname in hosts:
-                       hosts[hname].update(hmap)
-                    else:
-                       hosts[hname] = hmap
+        targets, hosts = read_conf_dir(system_config_dir, targets, hosts)
+        targets, hosts = read_conf_dir(user_config_dir, targets, hosts)
 
-    # merge info from user config, if present
-    if os.path.exists(user_conf):
-        user_targets, user_hosts = read_config(user_conf)
-        for tname in list(user_targets.keys()):
-            tmap = user_targets[tname]
-            # for bookkeeping, record the user file where
-            # this info came from
-            tmap["user_conf"] = user_conf
-            if tname in targets:
-                # if already present, merge the user info
-                targets[tname].update(tmap)
-            else:
-                # else just add the user info
-                targets[tname] = tmap
-        for hname in list(user_hosts.keys()):
-            hmap = user_hosts[hname]
-            hmap["user_conf"] = user_conf
-            if hname in hosts:
-                hosts[hname].update(hmap)
-            else:
-                hosts[hname] = hmap
-
-    # merge info from local config, if specified
+    # merge info from local configs, if specified
     if LOCAL_CONF_ENV_VAR in os.environ:
-        local_conf = os.environ[LOCAL_CONF_ENV_VAR]
-        local_conf_list = local_conf.split(":")
-        for local_conf in local_conf_list:
-            local_targets, local_hosts = read_config(local_conf, optional=False)
-            for tname in list(local_targets.keys()):
-                tmap = local_targets[tname]
-                # for bookkeeping, record the local file where
-                # this info came from
-                tmap["local_conf"] = local_conf
-                if tname in targets:
-                    # if already present, merge the local info
-                    targets[tname].update(tmap)
-                else:
-                    # else just add the local info
-                    targets[tname] = tmap
-            for hname in list(local_hosts.keys()):
-                hmap = local_hosts[hname]
-                hmap["local_conf"] = local_conf
-                if hname in hosts:
-                    hosts[hname].update(hmap)
-                else:
-                    hosts[hname] = hmap
+        local_conf_pathset = os.environ[LOCAL_CONF_ENV_VAR]
+        local_conf_list = local_conf_pathset.split(":")
+        for local_conf_path in local_conf_list:
+            local_conf_dir = os.path.dirname(local_conf_path)
+            # ttc pre-2.2.3 allowed for local config files not named ttc.conf
+            # this structure does not
+            targets, hosts = read_conf_dir(local_conf_dir, targets, hosts)
 
     target_list = list(targets.keys())
     target_alias = {}
