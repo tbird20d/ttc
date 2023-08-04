@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.2.5  - Don't use --debug for 'ttc run' inside command_stats()
 #  2.2.4  - Fix bug with nested ttc invocation (missing a specified target)
 #  2.2.3  - Support /etc/ttc.conf.d directory (individual .conf files)
 #  2.2.0  - Support duration option for ttc reserve
@@ -93,7 +94,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,2,4)
+VERSION = (2,2,5)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -982,10 +983,10 @@ def command_status(tmap):
 
         # use --no-check to avoid checking the reservation
         rcode, result = getstatusoutput( \
-                'ttc --debug --no-check %s run echo \"hello response\"' % tmap["target"])
-
-        # FIXTHIS - not sure what to do if user doesn't have reservation
-        # this returns INOPERATIVE, because ttc run fails
+                'ttc --no-check %s run echo \"hello response\"' % tmap["target"])
+        dprint("rcode=%d, result='%s'" % (rcode, result))
+        if rcode:
+            return "INOPERATIVE"
 
         m = re.search(r"hello response", result)
         if m:
