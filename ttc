@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.3.0  - Add support for -v to 'ttc list' command, to show target config source
 #  2.2.5  - Don't use --debug for 'ttc run' inside command_stats()
 #  2.2.4  - Fix bug with nested ttc invocation (missing a specified target)
 #  2.2.3  - Support /etc/ttc.conf.d directory (individual .conf files)
@@ -94,7 +95,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,2,5)
+VERSION = (2,3,0)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -139,12 +140,15 @@ command_help = {
 "console":("Run a program to view the target console.", ""),
 
 "list":("Show a list of available targets.",
-"""Usage: ttc [-q]
+"""Usage: ttc [-q] [-v] list
   Prints target board names with their aliases and 'real_board'
   attributes, if any.
 
   Use -q for "quiet" mode.  This prints only the board names, with no
-  additional information. This is suitable for piping to other commands."""),
+  additional information. This is suitable for piping to other commands.
+
+  Use -v for "verbose" mode.  This prints board names, aliases, real board
+  and 'ttc_conf_file' file attributes - showing where a board is configured."""),
 
 "info":("Show information about a target.",
 """Usage: ttc [<target>] info [-v] [-n <attr>]
@@ -464,6 +468,7 @@ def read_config(config_path, optional=True):
                 print_error("redefining target '%s' in configuration file %s, at line %d" % (target, config_path, line_no))
             targets[target]={}
             targets[target]["target"] = target
+            targets[target]["ttc_conf_file"] = config_path
             in_target = True
             in_host = False
             continue
@@ -476,6 +481,7 @@ def read_config(config_path, optional=True):
                 print_error("redefining host '%s' in configuration file %s, at lne %d" % (host, config_path, line_no))
             hosts[host]={}
             hosts[host]["host"] = host
+            hosts[host]["ttc_conf_file"] = config_path
             in_host = True
             in_target = False
             continue
@@ -562,9 +568,9 @@ def read_conf_dir(conf_dir, targets, hosts):
             tmap = new_targets[tname]
             if tname in targets:
                 # if already present, merge the system info
+                # but merge ttc_conf_file textually (don't just overwrite it)
+                ttc_conf_file = targets[tname]["ttc_conf_file"] + ", " + conf_path
                 targets[tname].update(tmap)
-                ttc_conf_file = targets[tname]["ttc_conf_file"]
-                ttc_conf_file += (", " + conf_path)
                 targets[tname]["ttc_conf_file"] = ttc_conf_file
             else:
                 tmap["ttc_conf_file"] = conf_path
@@ -573,9 +579,8 @@ def read_conf_dir(conf_dir, targets, hosts):
         for hname in list(new_hosts.keys()):
             hmap = new_hosts[hname]
             if hname in hosts:
+                ttc_conf_file = hosts[hname]["ttc_conf_file"] + ", " + conf_path
                 hosts[hname].update(hmap)
-                ttc_conf_file = hosts[hname]["ttc_conf_file"]
-                ttc_conf_file += (", " + conf_path)
                 hosts[hname]["ttc_conf_file"] = ttc_conf_file
             else:
                 hmap["ttc_conf_file"] = conf_path
@@ -611,7 +616,11 @@ def do_list(targets, hosts):
         if not quiet and "real_board" in targets[target]:
             treal = " (real %s)" % targets[target]["real_board"]
 
-        output_lines.append("%s%s%s%s" % (prefix, target, talias, treal))
+        tconfig = ''
+        if verbose:
+            tconfig = " (from config %s)" % targets[target]["ttc_conf_file"]
+
+        output_lines.append("%s%s%s%s%s" % (prefix, target, talias, treal, tconfig))
 
     # get targets from other hosts, and format the data
     # (add host prefix to target, alias and real-board info)
@@ -763,7 +772,7 @@ def do_info(tmap, options):
         try:
             value = tmap[attr]
         except:
-            print_error("target '%s' has no attributed '%s'." % (target_name, attr))
+            print_error("target '%s' has no attribute '%s'." % (target_name, attr))
             sys.exit(1)
         print(value)
         return
