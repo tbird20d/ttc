@@ -1129,7 +1129,7 @@ def do_get_kernel(tmap, hosts, options):
     # handle local operation
     if not is_remote(tmap):
         os.environ["KERNEL_SRC"] = outdir
-        exec_command(tmap, command)
+        exec_command(tmap, "get_kernel")
         return
 
     # target is remote: do get_kernel on host, then copy to local dir
