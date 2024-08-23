@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.3.2  - Add warning when merging configs
 #  2.3.0  - Add support for -v to 'ttc list' command, to show target config source
 #  2.2.5  - Don't use --debug for 'ttc run' inside command_stats()
 #  2.2.4  - Fix bug with nested ttc invocation (missing a specified target)
@@ -95,7 +96,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,3,0)
+VERSION = (2,3,2)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -416,6 +417,7 @@ def error_out(message, rcode):
 # value line 2, etc."""
 
 def read_config(config_path, optional=True):
+    dprint("Reading from config file: %s" % config_path)
     # look in configuration directory
     config_file = os.path.basename(config_path)
     try:
@@ -463,6 +465,7 @@ def read_config(config_path, optional=True):
         # if we're outside a block, look for the start of a new target
         if line.startswith("target="):
             target = line.split("=")[1].strip()
+            dprint("target=%s" % target)
             # start a new target map
             if target in targets:
                 print_error("redefining target '%s' in configuration file %s, at line %d" % (target, config_path, line_no))
@@ -500,6 +503,8 @@ def read_config(config_path, optional=True):
         (name, value) = line.split('=', 1)
         name = name.strip()
         value = value.strip()
+        if name=="description":
+            dprint("attr=%s, line='%s'" % (name, line.strip()))
         if value.find('"""')==-1:
             # this is a single-line, just record the attribute
             if value.startswith('"') and value.endswith('"'):
@@ -567,6 +572,7 @@ def read_conf_dir(conf_dir, targets, hosts):
         for tname in list(new_targets.keys()):
             tmap = new_targets[tname]
             if tname in targets:
+                dprint("Warning: Merging data for target %s" % tname)
                 # if already present, merge the system info
                 # but merge ttc_conf_file textually (don't just overwrite it)
                 ttc_conf_file = targets[tname]["ttc_conf_file"] + ", " + conf_path
