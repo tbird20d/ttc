@@ -96,7 +96,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,3,2)
+VERSION = (2,3,3)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -907,7 +907,7 @@ def do_run(tmap, options):
             pass
 
     if not cmd_block:
-        print_error('run_cmd not configured for target %s' % (tmap["target"]))
+        error_out('run_cmd not configured for target %s' % (tmap["target"]), 3)
 
     # cmd can be a single line, or a list of commands to run
     cmds = cmd_block.split('\n')
