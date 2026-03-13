@@ -96,7 +96,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,3,3)
+VERSION = (2,3,4)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
