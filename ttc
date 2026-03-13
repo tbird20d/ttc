@@ -237,9 +237,9 @@ command_help = {
   if none is specified in the ttc.conf file.)
 
   Multiple <option-defs> may be specified with one command.  Each
-  <option-def> has the syntax: <option-name><operation><value>.i
+  <option-def> has the syntax: <option-name><operation><value>
   Operations are: '=' for assignment, and '+=' for a string append.
-  Boolean or tristate values should be one of "y", "n", and "n".
+  Boolean or tristate values should be one of "y", "n", and "m".
   String values must be enclosed in quotes, which usually requires shell
   escaping of the quote characters (see below).
 
@@ -1130,7 +1130,7 @@ def do_get_kernel(tmap, hosts, options):
         except IndexError:
             error_out("Missing argument for -o option", 1)
     else:
-        outdir = "linux"
+        outdir = os.environ.get("KERNEL_SRC", "linux")
 
     # handle local operation
     if not is_remote(tmap):
