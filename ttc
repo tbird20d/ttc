@@ -893,7 +893,7 @@ def exec_command(tmap, command, use_system=1):
             (rcode, result) = getstatusoutput(full_cmd)
             full_cmd = ""
         if not quiet:
-            if verbose:
+            if verbose and result.strip():
                 sys.stdout.write("result=")
             sys.stdout.write(result)
             try:
@@ -2280,6 +2280,8 @@ def main():
             do_run(tmap, ["cat", "/proc/cmdline"])
         if verbose:
             command = "get_cmdline_verbose"
+            # suppress 'result= data' from exec_command
+            verbose = False
         exec_command(tmap, command)
         sys.exit(0)
 
