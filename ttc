@@ -24,6 +24,7 @@
 #  * should support INSTALL_MOD_PATH
 #
 # CHANGELOG:
+#  2.4.0  - Add get_cmdline, set_cmdline
 #  2.3.2  - Add warning when merging configs
 #  2.3.0  - Add support for -v to 'ttc list' command, to show target config source
 #  2.2.5  - Don't use --debug for 'ttc run' inside command_stats()
@@ -96,7 +97,7 @@ except:
     from commands import getstatusoutput
 
 # MAJOR, MINOR, REVISION (or PATCH)
-VERSION = (2,3,4)
+VERSION = (2,4,0)
 # NOTE: make sure to change ttc-dist.sh to match
 
 # lockdir is the place where reservation files are kept
@@ -250,6 +251,36 @@ command_help = {
       ttc set_config "CONFIG_STR=\\"foo bar\\""
       ttc set_config "CONFIG_STR+=\\" quiet\\""
 """),
+
+"get_cmdline":("Get the kernel commandline",
+"""Usage: ttc [<target>] get_cmdline [-s]
+  Get the kernel command line.  This is the command line as specified
+  in boot configuration data (not CONFIG_CMDLINE).  Use -s to get the
+  cmdline from the currently running system (e.g. /proc/cmdline)
+
+  On some platforms, this may only show the easily editable portion
+  of the cmdline.  The command line may be adjusted by bootloaders
+  during boot, and so some options may not be simply accessible.
+  There may be differences between the configured command line and
+  the ultimate running command line.
+
+  The '-v' option will show, if available, where the different cmdline
+  data comes from. (e.g. cmdline.txt, uboot, dt, grub, etc.)
+  The target configuration must support get_cmdline_verbose_cmd for
+  this to work."""),
+
+"set_cmdline":("Set options in kernel cmdline configuration",
+"""Usage: ttc [<target>] set_cmdline [-r] <options>
+
+  The specified options will be appended to the existing configured
+  options. If '-r' is used, the specified options replace the entire
+  string in the configuration.
+
+  Ex: ttc get_cmdline
+  Ex: ttc set_cmdline mem=1G
+  Ex: ttc set_cmdline -r console=serial0,115200 console=tty1 root=PARTUUID=2de36bc5-02 rootfstype=ext4 rootwait initcall_debug
+"""),
+
 
 "kbuild":("Build kernel from source.",
 """Usage: ttc [<target>] kbuild"""),
@@ -1300,6 +1331,25 @@ def do_set_config(tmap, kernel_dir, kopts):
             continue
         set_config_value_in_file(cfile, op, config, value)
 
+def do_set_cmdline(tmap, options):
+# FIXTHIS - set_cmdline doesn't support -o option yet
+    # check for full replace, or just append
+    do_append = True
+    if "-r" in options:
+        options.remove("-r")
+        do_append = False
+
+    new_options_str = " ".join(options)
+
+    if do_append:
+        cmd = "ttc %s get_cmdline" % tmap["target"]
+        (rcode, result) = getstatusoutput(cmd)
+        cmdline = result.strip() + " " + new_options_str
+    else:
+        cmdline = new_options_str
+
+    os.environ["CMDLINE"] = cmdline
+    exec_command(tmap, "set_cmdline")
 
 # split filepath by colon, and return prefix and remainder
 # Returns '' as prefix (and the path unchanged) if there's # no colon, or
@@ -1951,14 +2001,17 @@ def main():
     command_list = ["list", "info", "help", "--help", "-h", "version",
         "console", "login", "status", "setenv", "kinstall",
         "kbuild", "mbuild", "minstall",
-        "on", "off", "pos", "reset","reboot", "get_kernel", "get_config",
-        "set_config", "cp", "rm", "wait_for", "fsbuild",
+        "on", "off", "pos", "reset","reboot", "get_kernel",
+        "get_config", "set_config", "get_cmdline", "set_cmdline",
+        "cp", "rm", "wait_for", "fsbuild",
         "fsinstall", "run", "vars", "reserve", "release"]
     nontarget_commands = ["list", "help", "--help", "-h", "version", "vars"]
     board_mod_commands = ["console", "login", "kinstall", "minstall",
-        "on", "off", "reset", "reboot", "cp", "rm", "fsinstall", "run"]
+        "on", "off", "reset", "reboot", "cp", "rm", "fsinstall", "run",
+        "set_cmdline"]
     easy_remote_commands = ["info", "login", "reserve", "release", "status",
-        "reboot", "on", "off", "pos", "reset", "rm", "run", "version"]
+        "reboot", "on", "off", "pos", "reset", "rm", "run", "version",
+        "get_cmdline", "set_cmdline"]
 
     options = []
 
@@ -2219,6 +2272,19 @@ def main():
             outdir = options[options.index("-o")+1]
 
         do_set_config(tmap, outdir, options)
+
+    if command=="get_cmdline":
+        # get kernel command line
+        if "-s" in options:
+            # get the command line from the running system
+            do_run(tmap, ["cat", "/proc/cmdline"])
+        if verbose:
+            command = "get_cmdline_verbose"
+        exec_command(tmap, command)
+        sys.exit(0)
+
+    if command=="set_cmdline":
+        do_set_cmdline(tmap, options)
 
     if command=="cp":
         if is_remote(tmap):
