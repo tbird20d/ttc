@@ -940,7 +940,7 @@ def do_run(tmap, options):
     if not cmd_block:
         error_out('run_cmd not configured for target %s' % (tmap["target"]), 3)
 
-    # cmd can be a single line, or a list of commands to run
+    # run_cmd block can be a single line, or a multiple lines to run
     cmds = cmd_block.split('\n')
     last_cmd = cmds[-1]
     for cmd in cmds[:-1]:
