@@ -89,6 +89,7 @@ import shutil
 import shlex
 import time
 import datetime
+import signal
 
 # handle missing routines from python2 or python3 modules
 try:
@@ -333,13 +334,15 @@ to allow the board to reboot."""),
  the interval between executing the command is 5 seconds.
  Use -i to specify a different interval, and -t to specify a
  maximum time to wait.  Both are expressed in seconds.
+ The interval can be a floating point (e.g. .5)
 
    ex: ttc wait_for -i 2 -t 100 "test -f /tmp/outfile"
 
  This will check every two seconds to see if /tmp/outfile exists,
  waiting no longer than 100 seconds total. The exit code from
  'ttc' is the exit code of the last invocation of the
- command (0 on success)."""),
+ command (0 on success), or -1 if the command was
+ long-running and the operation timed out."""),
 
 "vars":("Information about environment vars used by 'ttc'",
 """Target uses the following environment variables, if present:
@@ -1572,33 +1575,62 @@ def do_rm(tmap, objects):
         exec_command(tmap, "rm")
         sys.exit(0)
 
+class AlarmTimeout(Exception):
+    pass
+
+def alarm_handler(signum, frame):
+    raise AlarmTimeout
 
 def do_wait_for(tmap, options):
     interval = 5
     # 99999 seconds is a little over 27 hours
     timeout = 99999
     if '-i' in options:
-        interval = int(options[options.index('-i')+1])
-        options.remove('-i')
-        options.remove(str(interval))
+        ipos = options.index('-i')
+        istr = options[ipos+1]
+        del options[ipos+1]
+        del options[ipos]
+        interval = float(istr)
     if '-t' in options:
-        timeout = int(options[options.index('-t')+1])
-        options.remove('-t')
-        options.remove(str(timeout))
+        tpos = options.index('-t')
+        tstr = options[tpos+1]
+        del options[tpos+1]
+        del options[tpos]
+        timeout = int(tstr)
 
-    cmd = options[0]
-    print('Waiting (up to %d seconds) for "%s"...' % (timeout, cmd))
+    cmd = " ".join(options)
+    print("Waiting (up to %d seconds) for '%s'..." % (timeout, cmd))
 
-    i = 0
-    while i < timeout:
-        rcode = os.system(cmd) >> 8
-        if rcode==0:
-            break
-        sys.stdout.write(".")
-        sys.stdout.flush()
-        time.sleep(interval)
-        i = i + interval
-    print()
+    signal.signal(signal.SIGALRM, alarm_handler)
+    signal.alarm(timeout)
+
+    start_time = time.time()
+    cur_time = time.time()
+    timeout_reason = None
+    rcode = -1
+    try:
+        while (cur_time - start_time) < timeout:
+            rcode = os.system(cmd) >> 8
+            if rcode==0:
+                break
+            # show a dot every interval, unless cmd is slow
+            sys.stdout.write(".")
+            sys.stdout.flush()
+            time.sleep(interval)
+            cur_time = time.time()
+        else:
+            timeout_reason = "timeout overrun"
+
+    except AlarmTimeout:
+        timeout_reason = "alarm timeout"
+        pass
+
+    # end our line of dots (or a chatty cmd)
+    print("")
+    signal.alarm(0)
+    if verbose and timeout_reason:
+        print("** Timed out: '%s'**" % timeout_reason)
+
     sys.exit(rcode)
 
 class reservation_class:
